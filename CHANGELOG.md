@@ -28,6 +28,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Neo4j connection and authentication issues
 - Test failures related to database operations
 - Environment variable handling in test suite
+- Transaction handling in `store_run` with proper commit/rollback/close
+- Metrics storage in Neo4j by converting complex objects to JSON strings
 
 ## [0.2.2] - 2025-02-21
 

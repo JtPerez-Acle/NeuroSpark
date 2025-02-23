@@ -4,11 +4,12 @@ from fastapi.testclient import TestClient
 from httpx import AsyncClient, ASGITransport
 import pytest_asyncio
 from app.main import app
+from datetime import datetime
 
 @pytest_asyncio.fixture
 async def async_client(test_app):
     """Create an async test client."""
-    async with AsyncClient(transport=ASGITransport(app=test_app), base_url="http://test") as client:
+    async with AsyncClient(transport=ASGITransport(app=test_app), base_url="http://localhost:8000") as client:
         yield client
 
 @pytest.mark.asyncio
@@ -16,128 +17,197 @@ async def test_root(async_client):
     """Test root endpoint."""
     response = await async_client.get("/")
     assert response.status_code == 200
-    assert "version" in response.json()
+    assert response.json() == {"message": "KQML Parser Backend API"}
 
 @pytest.mark.asyncio
 async def test_agent_message(async_client):
-    """Test agent message endpoint."""
-    test_message = {
-        "sender": "sensor1",
-        "receiver": "analyzer1",
-        "performative": "tell",
-        "content": "temperature 25.0 celsius"
+    """Test agent messaging endpoint."""
+    # First create an agent
+    agent_data = {
+        "id": "test_agent",
+        "type": "human",
+        "role": "user"
     }
-    response = await async_client.post("/agents/message", json=test_message)
+    response = await async_client.post("/agents", json=agent_data)
     assert response.status_code == 200
-    assert "status" in response.json()
-    assert "message_id" in response.json()
+
+    # Then send a message
+    message_data = {
+        "agent_id": "test_agent",
+        "performative": "tell",
+        "content": {"message": "test"}
+    }
+    response = await async_client.post("/agents/message", json=message_data)
+    assert response.status_code == 200
+    data = response.json()
+    assert "message" in data
+    assert data["status"] == "success"
 
 @pytest.mark.asyncio
 async def test_agent_runs(async_client):
-    """Test getting agent runs."""
-    # First, create some data for the agent
-    params = {"numAgents": 1, "numInteractions": 2}
-    response = await async_client.post("/synthetic/data", json=params)
+    """Test agent runs endpoint."""
+    # First create an agent
+    agent_data = {
+        "id": "test_agent",
+        "type": "human",
+        "role": "user"
+    }
+    response = await async_client.post("/agents", json=agent_data)
     assert response.status_code == 200
     
-    # Now get the agent's runs
-    response = await async_client.get("/agents/sensor1/runs")
+    # Then get runs
+    response = await async_client.get("/agents/test_agent/runs")
     assert response.status_code == 200
-    assert isinstance(response.json(), list)
+    data = response.json()
+    assert isinstance(data, list)
 
 @pytest.mark.asyncio
 async def test_agent_interactions(async_client):
-    """Test getting agent interactions."""
-    # First, create some data for the agent
-    params = {"numAgents": 1, "numInteractions": 2}
-    response = await async_client.post("/synthetic/data", json=params)
+    """Test agent interactions endpoint."""
+    # First create an agent
+    agent_data = {
+        "id": "test_agent",
+        "type": "human",
+        "role": "user"
+    }
+    response = await async_client.post("/agents", json=agent_data)
     assert response.status_code == 200
     
-    # Now get the agent's interactions
-    response = await async_client.get("/agents/sensor1/interactions")
+    # Then send a message
+    message_data = {
+        "agent_id": "test_agent",
+        "performative": "tell",
+        "content": {"message": "test"}
+    }
+    response = await async_client.post("/agents/message", json=message_data)
     assert response.status_code == 200
-    assert isinstance(response.json(), list)
+    
+    # Then get interactions
+    response = await async_client.get("/agents/test_agent/interactions")
+    assert response.status_code == 200
+    data = response.json()
+    assert isinstance(data, list)
+
+@pytest.mark.asyncio
+async def test_nonexistent_agent(async_client):
+    """Test endpoints with nonexistent agent ID."""
+    response = await async_client.get("/agents/nonexistent/runs")
+    assert response.status_code == 404
+    assert "not found" in response.json()["detail"].lower()
+    
+    response = await async_client.get("/agents/nonexistent/interactions")
+    assert response.status_code == 404
+    assert "not found" in response.json()["detail"].lower()
+
+@pytest.mark.asyncio
+async def test_invalid_message(async_client):
+    """Test storing an invalid message."""
+    # Missing required fields
+    message = {"content": {"temperature": 25.5}}
+    response = await async_client.post("/agents/message", json=message)
+    assert response.status_code == 422  # Validation error
+    
+    # Invalid performative
+    message = {
+        "performative": "invalid",
+        "content": {"temperature": 25.5},
+        "agent_id": "test_agent"
+    }
+    response = await async_client.post("/agents/message", json=message)
+    assert response.status_code == 422
 
 @pytest.mark.asyncio
 async def test_generate_synthetic_kqml(async_client):
-    """Test synthetic KQML message generation endpoint."""
-    response = await async_client.post("/synthetic/kqml")
+    """Test generating synthetic KQML."""
+    # First create an agent
+    agent_data = {
+        "id": "test_agent",
+        "type": "human",
+        "role": "user"
+    }
+    response = await async_client.post("/agents", json=agent_data)
+    assert response.status_code == 200
+
+    # Then generate KQML
+    response = await async_client.post("/generate/kqml")
     assert response.status_code == 200
     data = response.json()
-    assert data["status"] == "success"
-    assert "message_id" in data
-    assert "run_id" in data
+    assert "performative" in data
+    assert "content" in data
 
 @pytest.mark.asyncio
 async def test_generate_synthetic_data(async_client):
-    """Test synthetic dataset generation endpoint."""
-    params = {"numAgents": 3, "numInteractions": 5}
-    response = await async_client.post("/synthetic/data", json=params)
+    """Test generating synthetic data."""
+    # Generate synthetic data
+    response = await async_client.post("/generate/data", json={
+        "numAgents": 2,
+        "numInteractions": 1
+    })
     assert response.status_code == 200
     data = response.json()
+    assert "status" in data
     assert data["status"] == "success"
-    assert data["num_interactions"] == params["numInteractions"]
-    assert len(data["interaction_ids"]) == params["numInteractions"]
+    assert "data" in data
+    assert "agents" in data["data"]
+    assert "interactions" in data["data"]
+    assert len(data["data"]["agents"]) == 2
+    assert len(data["data"]["interactions"]) == 1
 
 @pytest.mark.asyncio
 async def test_get_network(async_client):
-    """Test network structure endpoint."""
+    """Test getting network data."""
     response = await async_client.get("/network")
     assert response.status_code == 200
     data = response.json()
     assert "nodes" in data
-    assert "links" in data
+    assert "edges" in data
+    assert isinstance(data["nodes"], list)
+    assert isinstance(data["edges"], list)
 
 @pytest.mark.asyncio
 async def test_get_network_with_filters(async_client):
-    """Test network structure endpoint with filters."""
-    response = await async_client.get("/network?node_type=Agent&time_range=24h")
+    """Test getting network data with filters."""
+    response = await async_client.get("/network?node_type=Agent")
     assert response.status_code == 200
     data = response.json()
     assert "nodes" in data
-    assert "links" in data
+    assert "edges" in data
+    assert isinstance(data["nodes"], list)
+    assert isinstance(data["edges"], list)
 
 @pytest.mark.asyncio
 async def test_query_network(async_client):
     """Test advanced network query endpoint."""
-    test_query = {
+    query = {
         "node_type": "Agent",
-        "relationship_type": "SENT",
-        "start_time": "2025-01-01T00:00:00Z",
-        "end_time": "2025-12-31T23:59:59Z",
-        "agent_ids": ["sensor1"],
-        "limit": 10,
+        "relationship_type": "INTERACTS",
+        "start_time": "2025-02-23T00:00:00Z",
+        "end_time": "2025-02-23T23:59:59Z",
         "include_properties": True
     }
-    response = await async_client.post("/network/query", json=test_query)
+    response = await async_client.post("/network/query", json=query)
     assert response.status_code == 200
     data = response.json()
     assert "nodes" in data
-    assert "links" in data
+    assert "edges" in data
+    assert isinstance(data["nodes"], list)
+    assert isinstance(data["edges"], list)
 
-@pytest.mark.parametrize("test_case", [
-    {
-        "endpoint": "/agents/message",
-        "method": "post",
-        "data": {"invalid": "data"},
-        "expected_status": 422
-    },
-    {
-        "endpoint": "/agents/nonexistent/runs",
-        "method": "get",
-        "expected_status": 404
-    },
-    {
-        "endpoint": "/network/query",
-        "method": "post",
-        "data": {"invalid": "query"},
-        "expected_status": 422
-    }
-])
 @pytest.mark.asyncio
+@pytest.mark.parametrize("test_case", [
+    ("invalid_message", {"invalid": "data"}, 422),
+    ("missing_agent", {"agent_id": "nonexistent", "performative": "tell", "content": {}}, 404),
+    ("invalid_query", {"invalid_field": "value"}, 422),
+])
 async def test_error_handling(async_client, test_case):
     """Test error handling for various scenarios."""
-    method = getattr(async_client, test_case["method"])
-    kwargs = {"data": test_case["data"]} if "data" in test_case else {}
-    response = await method(test_case["endpoint"], **kwargs)
-    assert response.status_code == test_case["expected_status"]
+    name, data, expected_status = test_case
+    
+    if name == "invalid_message":
+        response = await async_client.post("/agents/message", json=data)
+    elif name == "missing_agent":
+        response = await async_client.get(f"/agents/{data['agent_id']}/interactions")
+    else:
+        response = await async_client.post("/network/query", json=data)
+    
+    assert response.status_code == expected_status

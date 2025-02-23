@@ -1,162 +1,143 @@
-"""Module for generating synthetic KQML data."""
+"""Data generator module for creating synthetic KQML messages and interactions."""
+from datetime import datetime, timezone
 import random
-from datetime import datetime, timedelta, timezone
 import uuid
-from typing import List, Dict, Any
-from .kqml_handler import KQMLMessage
-
-class AgentProfile:
-    def __init__(self, agent_id: str, agent_type: str, capabilities: List[str]):
-        self.agent_id = agent_id
-        self.agent_type = agent_type
-        self.capabilities = capabilities
+from typing import Dict, List, Any, Optional
 
 class DataGenerator:
-    """Class for generating synthetic KQML data."""
+    """Generate synthetic data for testing."""
     
     def __init__(self):
-        """Initialize the data generator."""
-        self.agent_profiles = self.create_agent_profiles()
-    
-    def create_agent_profiles(self) -> List[Dict[str, str]]:
-        """Create a list of agent profiles with predefined roles."""
-        return [
-            {"id": "sensor1", "role": "temperature_sensor"},
-            {"id": "sensor2", "role": "humidity_sensor"},
-            {"id": "analyzer1", "role": "data_analyzer"},
-            {"id": "coordinator1", "role": "coordinator"},
-            {"id": "actuator1", "role": "hvac_actuator"},
-            {"id": "actuator2", "role": "light_actuator"},
-            {"id": "actuator3", "role": "ventilation_actuator"}
-        ]
-    
-    async def generate_measurement(self) -> Dict[str, str]:
-        """Generate a measurement message from a sensor."""
-        sensor = random.choice([p for p in self.agent_profiles if "sensor" in p["role"]])
-        analyzer = random.choice([p for p in self.agent_profiles if "analyzer" in p["role"]])
+        """Initialize data generator with agent types and roles."""
+        self.agent_types = {
+            "sensor": ["temperature", "pressure", "humidity"],
+            "analyzer": ["pattern", "anomaly", "trend"],
+            "coordinator": ["system", "network", "process"],
+            "actuator": ["hvac", "valve", "switch"]
+        }
         
-        if "temperature" in sensor["role"]:
-            value = round(random.uniform(18.0, 28.0), 1)
-            unit = "celsius"
+        self.performatives = {
+            "sensor": ["tell", "inform"],
+            "analyzer": ["evaluate", "inform"],
+            "coordinator": ["achieve", "request"],
+            "actuator": ["tell", "inform"]
+        }
+
+    def create_agent_profile(self, agent_type: Optional[str] = None, role: Optional[str] = None) -> Dict[str, Any]:
+        """Create a single agent profile."""
+        if not agent_type:
+            agent_type = random.choice(list(self.agent_types.keys()))
+        if not role:
+            role = random.choice(self.agent_types[agent_type])
+            
+        return {
+            "id": str(uuid.uuid4()),
+            "type": agent_type,
+            "role": role,
+            "created_at": datetime.now(timezone.utc).isoformat()
+        }
+
+    def create_agent_profiles(self, num_agents: int) -> List[Dict[str, Any]]:
+        """Create multiple agent profiles."""
+        return [self.create_agent_profile() for _ in range(num_agents)]
+
+    def generate_content_by_type(self, agent_type: str, role: str) -> Dict[str, Any]:
+        """Generate content based on agent type and role."""
+        if agent_type == "sensor":
+            reading = round(random.uniform(0, 100), 2)
+            return {
+                "reading": reading,
+                role: reading,
+                "celsius": reading if role == "temperature" else None,
+                "timestamp": datetime.now(timezone.utc).isoformat()
+            }
+        elif agent_type == "analyzer":
+            return {
+                "analysis": f"{role}_analysis_{random.randint(1, 1000)}",
+                "status": random.choice(["normal", "warning", "critical"]),
+                "confidence": round(random.uniform(0, 1), 2),
+                "timestamp": datetime.now(timezone.utc).isoformat()
+            }
+        elif agent_type == "coordinator":
+            return {
+                "command": f"{role}_command_{random.randint(1, 1000)}",
+                "action": random.choice(["start", "stop", "update"]),
+                "priority": random.choice(["low", "medium", "high"]),
+                "timestamp": datetime.now(timezone.utc).isoformat()
+            }
+        elif agent_type == "actuator":
+            return {
+                "status": random.choice(["active", "inactive", "error"]),
+                "action_status": random.choice(["success", "pending", "failed"]),
+                "timestamp": datetime.now(timezone.utc).isoformat()
+            }
         else:
-            value = round(random.uniform(30.0, 70.0), 1)
-            unit = "percent"
+            raise ValueError(f"Unknown agent type: {agent_type}")
+
+    def get_performative_by_type(self, agent_type: str) -> str:
+        """Get appropriate performative for agent type."""
+        return random.choice(self.performatives[agent_type])
+
+    def generate_interaction(self, sender: Dict[str, Any], receiver: Dict[str, Any], run_id: Optional[str] = None) -> Dict[str, Any]:
+        """Generate an interaction between two agents."""
+        performative = self.get_performative_by_type(sender["type"])
+        content = self.generate_content_by_type(sender["type"], sender["role"])
         
-        content = f"{value} {unit}"
-        return {
-            "sender": sensor["id"],
-            "receiver": analyzer["id"],
-            "performative": "tell",
-            "content": content
+        # Create KQML message
+        kqml_content = f"""(
+            {performative}
+            :sender {sender["id"]}
+            :receiver {receiver["id"]}
+            :content {str(content)}
+            :language json
+            :ontology {sender["type"]}_{sender["role"]}
+        )"""
+        
+        # Create interaction data
+        interaction = {
+            "id": str(uuid.uuid4()),
+            "source_id": sender["id"],
+            "target_id": receiver["id"],
+            "performative": performative,
+            "content": content,
+            "kqml_content": kqml_content,
+            "timestamp": datetime.now(timezone.utc).isoformat()
         }
-    
-    async def generate_analysis_result(self) -> Dict[str, str]:
-        """Generate an analysis result message."""
-        analyzer = random.choice([p for p in self.agent_profiles if "analyzer" in p["role"]])
-        coordinator = random.choice([p for p in self.agent_profiles if "coordinator" in p["role"]])
         
-        status = random.choice(["normal", "warning", "critical"])
-        content = f"status {status}"
-        return {
-            "sender": analyzer["id"],
-            "receiver": coordinator["id"],
-            "performative": "inform",
-            "content": content
-        }
-    
-    async def generate_action_result(self) -> Dict[str, str]:
-        """Generate an action result message."""
-        actuator = random.choice([p for p in self.agent_profiles if "actuator" in p["role"]])
-        coordinator = random.choice([p for p in self.agent_profiles if "coordinator" in p["role"]])
-        
-        success = random.choice([True, False])
-        if "hvac" in actuator["role"]:
-            action = "temperature_adjustment"
-        elif "light" in actuator["role"]:
-            action = "light_adjustment"
-        else:
-            action = "ventilation_adjustment"
-        
-        content = f"action_complete {action} {str(success).lower()}"
-        return {
-            "sender": actuator["id"],
-            "receiver": coordinator["id"],
-            "performative": "tell",
-            "content": content
-        }
-    
-    async def generate_coordinator_message(self) -> Dict[str, str]:
-        """Generate a coordinator message."""
-        coordinator = random.choice([p for p in self.agent_profiles if "coordinator" in p["role"]])
-        actuator = random.choice([p for p in self.agent_profiles if "actuator" in p["role"]])
-        
-        if "hvac" in actuator["role"]:
-            value = round(random.uniform(19.0, 25.0), 1)
-            content = f"set_temperature {value}"
-        elif "light" in actuator["role"]:
-            value = round(random.uniform(0, 100), 0)
-            content = f"set_light_level {value}"
-        else:
-            value = round(random.uniform(0, 100), 0)
-            content = f"set_ventilation {value}"
-        
-        return {
-            "sender": coordinator["id"],
-            "receiver": actuator["id"],
-            "performative": "request",
-            "content": content
-        }
-    
-    async def generate_interaction(self, agents: List[Dict[str, str]] = None, run_id: str = None) -> Dict[str, Any]:
-        """Generate a random interaction between agents."""
-        if agents is None:
-            agents = self.agent_profiles
-        
-        generators = [
-            self.generate_measurement,
-            self.generate_analysis_result,
-            self.generate_action_result,
-            self.generate_coordinator_message
-        ]
-        message = await random.choice(generators)()
-        message["timestamp"] = datetime.now(timezone.utc).isoformat()
-        message_id = str(uuid.uuid4())
-        message["id"] = message_id
-        message["message_id"] = message_id
-        if run_id is not None:
-            message["run_id"] = run_id
-        return message
-    
-    async def generate_synthetic_kqml(self) -> Dict[str, Any]:
-        """Generate a synthetic KQML message."""
-        run_id = str(uuid.uuid4())
-        message = await self.generate_interaction(
-            agents=[{"id": "sensor1", "type": "sensor"}, {"id": "analyzer1", "type": "analyzer"}],
-            run_id=run_id
-        )
-        message["run_id"] = run_id
-        return message
-    
-    async def generate_synthetic_data(self, num_agents: int = 3, num_messages: int = 5) -> Dict[str, Any]:
+        if run_id:
+            interaction["run_id"] = run_id
+            
+        return interaction
+
+    def generate_synthetic_data(self, num_agents: int, num_interactions: int) -> Dict[str, Any]:
         """Generate synthetic dataset with agents and interactions."""
-        # Create agent profiles
-        agents = []
-        if num_agents > 0:
-            agents.append({"id": "sensor1", "type": "sensor"})  # Always include sensor1
-            for i in range(1, num_agents):
-                agent_id = f"agent{i}"
-                agent_type = random.choice(["sensor", "analyzer", "controller"])
-                agents.append({"id": agent_id, "type": agent_type})
+        # Create agents
+        agents = self.create_agent_profiles(num_agents)
         
         # Generate interactions
         interactions = []
-        run_id = str(uuid.uuid4())
-        for _ in range(num_messages):
-            interaction = await self.generate_interaction(agents, run_id=run_id)
+        for _ in range(num_interactions):
+            sender, receiver = random.sample(agents, 2)
+            interaction = self.generate_interaction(sender, receiver)
             interactions.append(interaction)
         
         return {
             "agents": agents,
-            "interactions": interactions,
-            "run_id": run_id
+            "interactions": interactions
+        }
+
+    def generate_synthetic_kqml(self) -> Dict[str, Any]:
+        """Generate a synthetic KQML message."""
+        # Create two random agents
+        sender = self.create_agent_profile()
+        receiver = self.create_agent_profile()
+        
+        # Generate interaction between them
+        interaction = self.generate_interaction(sender, receiver)
+        
+        # Return just the KQML-related parts
+        return {
+            "performative": interaction["performative"],
+            "content": interaction["content"],
+            "kqml_content": interaction["kqml_content"]
         }

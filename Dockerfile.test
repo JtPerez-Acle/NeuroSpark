@@ -1,0 +1,32 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    wget \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install poetry
+RUN pip install poetry
+
+# Copy only requirements first to leverage Docker cache
+COPY pyproject.toml poetry.lock* ./
+
+# Configure poetry to not create a virtual environment
+RUN poetry config virtualenvs.create false
+
+# Install dependencies without installing the root package
+RUN poetry install --no-interaction --no-ansi --with test --no-root
+
+# Create log directory with proper permissions
+RUN mkdir -p logs && chown 1000:1000 logs
+
+# Copy application code
+COPY --chown=1000:1000 . .
+
+# Install the root package
+RUN poetry install --no-interaction --no-ansi --only-root
+
+# Run tests
+CMD ["pytest", "-v", "--cov=app", "--cov-report=term-missing"]

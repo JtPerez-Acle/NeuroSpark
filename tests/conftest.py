@@ -1,121 +1,69 @@
-"""Test configuration module."""
-import pytest
-from datetime import datetime, timedelta, timezone
-import uuid
-from httpx import AsyncClient
-from fastapi import FastAPI
-from typing import List, Dict
+"""Test configuration."""
 import os
+import tempfile
+import pytest
+import pytest_asyncio
+import httpx
+from typing import Dict, Any, List
+from fastapi import FastAPI
+from httpx import AsyncClient
+from app.database.core.database import Neo4jDatabase
 
+# Set test environment variables if not already set
+os.environ.setdefault("NEO4J_URI", "bolt://localhost:7687")
+os.environ.setdefault("NEO4J_USER", "neo4j")
+os.environ.setdefault("NEO4J_PASSWORD", "kqml_dev_2025")
+
+@pytest.fixture(scope="session")
+def test_log_dir():
+    """Create a temporary directory for test logs."""
+    with tempfile.TemporaryDirectory() as temp_dir:
+        os.environ["TEST_LOG_DIR"] = temp_dir
+        os.environ["TESTING"] = "1"
+        yield temp_dir
+
+# Import app after setting up test log directory
 from app.main import app
-from app.database import InMemoryDatabase
-from app.models import RunData, InteractionData
 
-@pytest.fixture(autouse=True)
-def setup_test_env():
-    """Set up test environment."""
-    os.environ["TESTING"] = "true"
-    yield
-    os.environ.pop("TESTING", None)
-
-@pytest.fixture
-async def test_db():
+@pytest_asyncio.fixture
+async def test_db_neo4j():
     """Create test database."""
-    db = InMemoryDatabase()
+    db = Neo4jDatabase(
+        uri=os.environ["NEO4J_URI"],
+        username=os.environ["NEO4J_USER"],
+        password=os.environ["NEO4J_PASSWORD"]
+    )
     await db.connect()
-    yield db
-    await db.disconnect()
+    
+    try:
+        # Clean up any existing data
+        async with await db.get_session() as session:
+            await session.run("MATCH (n) DETACH DELETE n")
+        yield db
+    finally:
+        await db.disconnect()
 
-@pytest.fixture
-async def test_app(test_db) -> FastAPI:
-    """Create test application with in-memory database."""
-    app.dependency_overrides = {}  # Reset any existing overrides
-    app.state.db = test_db
+@pytest_asyncio.fixture
+async def test_app(test_db_neo4j) -> FastAPI:
+    """Create test FastAPI application."""
+    app.state.db = test_db_neo4j
     return app
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def async_client(test_app):
     """Create async test client."""
-    async with AsyncClient(app=test_app, base_url="http://test") as client:
+    base_url = "http://test"
+    transport = httpx.ASGITransport(app=test_app)
+    async with AsyncClient(transport=transport, base_url=base_url) as client:
         yield client
 
 @pytest.fixture
-def client(test_app):
-    return test_app
-
-@pytest.fixture
-def test_timestamp():
-    """Fixture to provide a test timestamp."""
-    return datetime.now(timezone.utc).isoformat()
-
-@pytest.fixture
-def test_agent_id():
-    """Fixture to provide a unique test agent ID."""
-    return f"test_agent_{uuid.uuid4().hex[:8]}"
-
-@pytest.fixture
-def test_run_id():
-    """Fixture to provide a unique test run ID."""
-    return f"test_run_{uuid.uuid4().hex[:8]}"
-
-@pytest.fixture
-def sample_kqml_message():
-    """Fixture to provide a sample KQML message."""
-    return "(tell temperature 25 :sender sensor1 :receiver agent1)"
-
-@pytest.fixture
-async def sample_run(test_db, test_run_id, test_timestamp) -> RunData:
-    """Fixture to provide a sample run."""
-    run_data = await test_db.create_run(test_run_id, test_timestamp)
-    return run_data
-
-@pytest.fixture
-async def sample_interaction(test_db, test_timestamp, sample_run) -> InteractionData:
-    """Fixture to provide a sample interaction."""
-    interaction = {
-        "performative": "tell",
-        "content": "temperature 25",
-        "sender": "sensor1",
-        "receiver": "agent1",
-        "timestamp": test_timestamp,
-        "run_id": sample_run["run_id"] if sample_run else None
-    }
-    await test_db.store_interaction(interaction)
-    return interaction
-
-@pytest.fixture
-async def test_agents(test_db) -> List[str]:
-    """Fixture to provide test agents."""
-    agents = ["agent1", "agent2", "sensor1", "sensor2"]
-    for agent_id in agents:
-        await test_db.create_agent(agent_id)
-    return agents
-
-@pytest.fixture
-async def test_runs(test_db) -> List[RunData]:
-    """Fixture to provide test runs."""
-    runs = []
-    for i in range(3):
-        timestamp = (datetime.now(timezone.utc) - timedelta(hours=i)).isoformat()
-        run_id = f"test_run_{i}"
-        run_data = await test_db.create_run(run_id, timestamp)
-        runs.append(run_data)
-    return runs
-
-@pytest.fixture
-async def test_interactions(test_db, test_agents, test_runs) -> List[InteractionData]:
-    """Fixture to provide test interactions."""
-    interactions = []
-    for i, run in enumerate(test_runs):
-        for j in range(2):
-            interaction = {
-                "performative": "tell",
-                "content": f"data_{i}_{j}",
-                "sender": test_agents[i % len(test_agents)],
-                "receiver": test_agents[(i + 1) % len(test_agents)],
-                "timestamp": (datetime.now(timezone.utc) - timedelta(hours=i)).isoformat(),
-                "run_id": run["run_id"]
-            }
-            await test_db.store_interaction(interaction)
-            interactions.append(interaction)
-    return interactions
+def test_agents() -> List[Dict[str, Any]]:
+    """Get test agents data."""
+    return [
+        {
+            "id": "test_agent",
+            "type": "human",
+            "role": "system"
+        }
+    ]

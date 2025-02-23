@@ -1,9 +1,10 @@
 #!/bin/bash
 
-# Set Neo4j environment variables
-export NEO4J_URI="bolt://localhost:7687"
-export NEO4J_USER="neo4j"
-export NEO4J_PASSWORD="testpassword"
+# Clean up any existing test containers
+docker-compose -f docker-compose.test.yml down -v
 
-# Run tests with coverage
-pytest --cov=app --cov-report=html --cov-report=term-missing:skip-covered
+# Build and run tests
+docker-compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test
+
+# Clean up after tests
+docker-compose -f docker-compose.test.yml down -v

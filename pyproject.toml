@@ -1,28 +1,42 @@
 [project]
 name = "kqml-parser-backend"
-version = "0.2.1"
+version = "0.2.3"
 description = "Multi-Agent Graph Intelligence System - Backend"
-requires-python = ">=3.11,<4.0"
-dependencies = [
-    "fastapi>=0.68.0,<0.69.0",
-    "uvicorn>=0.15.0,<0.16.0",
-    "neo4j>=5.12.0",
-    "python-dotenv>=0.19.0",
-    "pydantic>=1.8.0,<2.0.0",
-    "pytz>=2021.1"
+
+[tool.poetry]
+name = "kqml-parser-backend"
+version = "0.2.3"
+description = "Multi-Agent Graph Intelligence System - Backend"
+authors = ["Your Name <your.email@example.com>"]
+packages = [
+    { include = "app" }
 ]
 
-[project.optional-dependencies]
-test = [
-    "pytest>=7.0.0",
-    "pytest-asyncio>=0.18.0",
-    "pytest-cov>=4.0.0",
-    "httpx>=0.24.0",
-]
+[tool.poetry.dependencies]
+python = ">=3.11,<4.0"
+fastapi = ">=0.68.0,<0.69.0"
+uvicorn = ">=0.15.0,<0.16.0"
+neo4j = ">=5.12.0"
+python-dotenv = ">=0.19.0"
+pydantic = ">=1.8.0,<2.0.0"
+pytz = ">=2021.1"
+loguru = ">=0.7.2,<0.8.0"
+prometheus-client = ">=0.19.0"
+prometheus-fastapi-instrumentator = ">=6.1.0"
+
+[tool.poetry.group.test]
+optional = true
+
+[tool.poetry.group.test.dependencies]
+pytest = ">=7.0.0"
+pytest-asyncio = ">=0.18.0"
+pytest-cov = ">=4.0.0"
+httpx = ">=0.24.0"
+requests = "^2.32.3"
 
 [build-system]
-requires = ["setuptools>=45", "wheel"]
-build-backend = "setuptools.build_meta"
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

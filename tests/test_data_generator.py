@@ -1,68 +1,132 @@
+"""Tests for data generator module."""
 import pytest
+from datetime import datetime
 from app.data_generator import DataGenerator
 
 class TestDataGenerator:
-    @pytest.fixture
-    def data_generator(self):
-        return DataGenerator()
+    """Test cases for DataGenerator class."""
 
-    def test_create_agent_profiles(self, data_generator):
-        """Test that agent profiles are created correctly."""
-        profiles = data_generator.create_agent_profiles()
-        assert len(profiles) > 0
-        assert all(isinstance(p, dict) for p in profiles)
-        assert all("id" in p and "role" in p for p in profiles)
+    def setup_method(self):
+        """Set up test cases."""
+        self.generator = DataGenerator()
 
-    @pytest.mark.asyncio
-    async def test_generate_measurement(self, data_generator):
-        """Test measurement message generation."""
-        msg = await data_generator.generate_measurement()
-        assert isinstance(msg, dict)
-        assert all(k in msg for k in ["sender", "receiver", "performative", "content"])
-        assert msg["performative"] == "tell"
-        assert any(word in msg["content"] for word in ["celsius", "percent"])
+    def test_create_agent_profile(self):
+        """Test creating a single agent profile."""
+        # Test with specific type and role
+        profile = self.generator.create_agent_profile("sensor", "temperature")
+        assert profile["type"] == "sensor"
+        assert profile["role"] == "temperature"
+        assert "created_at" in profile
+        assert isinstance(profile["id"], str)
+        
+        # Test with random type and role
+        profile = self.generator.create_agent_profile()
+        assert profile["type"] in self.generator.agent_types
+        assert profile["role"] in self.generator.agent_types[profile["type"]]
 
-    @pytest.mark.asyncio
-    async def test_generate_analysis_result(self, data_generator):
-        """Test analysis result message generation."""
-        msg = await data_generator.generate_analysis_result()
-        assert isinstance(msg, dict)
-        assert all(k in msg for k in ["sender", "receiver", "performative", "content"])
-        assert msg["performative"] == "inform"
-        assert "status" in msg["content"]
+    def test_create_agent_profiles(self):
+        """Test creating multiple agent profiles."""
+        num_agents = 3
+        profiles = self.generator.create_agent_profiles(num_agents)
+        
+        assert len(profiles) == num_agents
+        for profile in profiles:
+            assert "id" in profile
+            assert "type" in profile
+            assert "role" in profile
+            assert "created_at" in profile
 
-    @pytest.mark.asyncio
-    async def test_generate_action_result(self, data_generator):
-        """Test action result message generation."""
-        msg = await data_generator.generate_action_result()
-        assert isinstance(msg, dict)
-        assert all(k in msg for k in ["sender", "receiver", "performative", "content"])
-        assert msg["performative"] == "tell"
-        assert "action_complete" in msg["content"]
+    def test_generate_content_by_type(self):
+        """Test content generation for different agent types."""
+        # Test sensor content
+        content = self.generator.generate_content_by_type("sensor", "temperature")
+        assert "reading" in content
+        assert "temperature" in content
+        assert "celsius" in content
+        assert "timestamp" in content
 
-    @pytest.mark.asyncio
-    async def test_generate_coordinator_message(self, data_generator):
-        """Test coordinator message generation."""
-        msg = await data_generator.generate_coordinator_message()
-        assert isinstance(msg, dict)
-        assert all(k in msg for k in ["sender", "receiver", "performative", "content"])
-        assert msg["performative"] == "request"
-        assert any(cmd in msg["content"] for cmd in ["set_temperature", "set_light_level", "set_ventilation"])
-        assert any(str(num) in msg["content"] for num in range(0, 101))
+        # Test analyzer content
+        content = self.generator.generate_content_by_type("analyzer", "pattern")
+        assert "analysis" in content
+        assert "status" in content
+        assert "confidence" in content
+        assert "timestamp" in content
 
-    @pytest.mark.asyncio
-    async def test_generate_interaction(self, data_generator):
-        """Test random interaction generation."""
-        msg = await data_generator.generate_interaction()
-        assert isinstance(msg, dict)
-        assert all(k in msg for k in ["sender", "receiver", "performative", "content"])
+        # Test coordinator content
+        content = self.generator.generate_content_by_type("coordinator", "system")
+        assert "command" in content
+        assert "action" in content
+        assert "priority" in content
+        assert "timestamp" in content
 
-    @pytest.mark.asyncio
-    async def test_generate_synthetic_data(self, data_generator):
-        """Test synthetic data generation."""
-        data = await data_generator.generate_synthetic_data(num_agents=3, num_messages=5)
-        assert isinstance(data, dict)
+        # Test actuator content
+        content = self.generator.generate_content_by_type("actuator", "hvac")
+        assert "status" in content
+        assert "action_status" in content
+        assert "timestamp" in content
+
+    def test_generate_interaction(self):
+        """Test generating an interaction between agents."""
+        sender = self.generator.create_agent_profile("sensor", "temperature")
+        receiver = self.generator.create_agent_profile("analyzer", "pattern")
+        
+        interaction = self.generator.generate_interaction(sender, receiver)
+        
+        assert "id" in interaction
+        assert "source_id" in interaction
+        assert "target_id" in interaction
+        assert "performative" in interaction
+        assert "content" in interaction
+        assert "kqml_content" in interaction
+        assert "timestamp" in interaction
+        
+        # Verify KQML message format
+        kqml_msg = interaction["kqml_content"]
+        assert isinstance(kqml_msg, str)
+        assert ":sender" in kqml_msg
+        assert ":receiver" in kqml_msg
+        assert ":content" in kqml_msg
+        assert ":language" in kqml_msg
+        assert ":ontology" in kqml_msg
+
+    def test_get_performative_by_type(self):
+        """Test getting performatives for different agent types."""
+        sensor_perf = self.generator.get_performative_by_type("sensor")
+        assert sensor_perf in ["tell", "inform"]
+        
+        analyzer_perf = self.generator.get_performative_by_type("analyzer")
+        assert analyzer_perf in ["evaluate", "inform"]
+        
+        coordinator_perf = self.generator.get_performative_by_type("coordinator")
+        assert coordinator_perf in ["achieve", "request"]
+        
+        actuator_perf = self.generator.get_performative_by_type("actuator")
+        assert actuator_perf in ["tell", "inform"]
+
+    def test_generate_synthetic_data(self):
+        """Test generating a complete synthetic dataset."""
+        num_agents = 3
+        num_interactions = 5
+        data = self.generator.generate_synthetic_data(num_agents, num_interactions)
+        
         assert "agents" in data
         assert "interactions" in data
-        assert len(data["agents"]) == 3
-        assert len(data["interactions"]) == 5
+        assert len(data["agents"]) == num_agents
+        assert len(data["interactions"]) == num_interactions
+        
+        # Verify agent structure
+        for agent in data["agents"]:
+            assert "id" in agent
+            assert "type" in agent
+            assert "role" in agent
+            assert "created_at" in agent
+        
+        # Verify interaction structure
+        for interaction in data["interactions"]:
+            assert "id" in interaction
+            assert "source_id" in interaction
+            assert "target_id" in interaction
+            assert "performative" in interaction
+            assert "content" in interaction
+            assert "kqml_content" in interaction
+            assert "timestamp" in interaction

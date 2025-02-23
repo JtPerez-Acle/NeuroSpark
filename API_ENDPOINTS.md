@@ -1,6 +1,6 @@
 # API Endpoints Documentation
 
-This document provides detailed information about all available API endpoints in the KQML Parser Backend.
+This document provides detailed information about all available API endpoints in the KQML Parser Backend [0.2.3].
 
 ## Base URL
 
@@ -116,15 +116,16 @@ Provides real-time updates for agent interactions and system events.
     "nodes": [
       {
         "id": "string",
-        "label": "string",
+        "type": "string",
         "properties": {}
       }
     ],
-    "links": [
+    "relationships": [
       {
         "source": "string",
         "target": "string",
-        "type": "string"
+        "type": "string",
+        "properties": {}
       }
     ]
   }
@@ -132,86 +133,69 @@ Provides real-time updates for agent interactions and system events.
 - **Error Codes**:
   - `500`: Server error
 
-#### Query Network Graph
+#### Query Network
 - **Endpoint**: `POST /network/query`
 - **Description**: Query network graph data with filters
 - **Request Body**:
   ```json
   {
-    "filters": {
-      "node_types": ["string"],
-      "relationship_types": ["string"],
-      "time_range": "string",
-      "properties": {}
+    "node_types": ["string"],
+    "relationship_types": ["string"],
+    "time_range": "string (24h, 7d, 30d, all)",
+    "properties": {
+      "key": "value"
     }
   }
   ```
-- **Response**:
-  ```json
-  {
-    "nodes": [
-      {
-        "id": "string",
-        "label": "string",
-        "properties": {}
-      }
-    ],
-    "links": [
-      {
-        "source": "string",
-        "target": "string",
-        "type": "string"
-      }
-    ]
-  }
-  ```
+- **Response**: Same as GET /network
 - **Error Codes**:
-  - `422`: Invalid query format
+  - `422`: Invalid query parameters
   - `500`: Server error
 
 ### Synthetic Data Operations
 
-#### Generate Synthetic KQML Message
-- **Endpoint**: `POST /synthetic/kqml`
-- **Description**: Generate a synthetic KQML message
-- **Response**:
+#### Generate Synthetic Data
+- **Endpoint**: `POST /synthetic/generate`
+- **Description**: Generate synthetic data for testing
+- **Request Body**:
   ```json
   {
-    "status": "success",
-    "message_id": "string (UUID)",
-    "run_id": "string (UUID)",
-    "data": {
-      "message": "string",
-      "sender": "string",
-      "receiver": "string",
-      "content": "string",
-      "performative": "string",
-      "timestamp": "string (ISO datetime)"
-    }
+    "num_agents": "integer",
+    "num_messages": "integer",
+    "time_range": "string (duration)",
+    "seed": "integer (optional)"
   }
   ```
-- **Error Codes**:
-  - `500`: Server error
-
-#### Generate Synthetic Dataset
-- **Endpoint**: `POST /synthetic/data`
-- **Description**: Generate a synthetic dataset of agent interactions
-- **Query Parameters**:
-  - `num_runs`: integer (default: 1) - Number of runs to generate
-  - `interactions_per_run`: integer (default: 10) - Number of interactions per run
 - **Response**:
   ```json
   {
     "status": "success",
     "generated": {
-      "runs": "integer",
-      "interactions": "integer",
-      "agents": "integer"
+      "agents": "integer",
+      "messages": "integer",
+      "runs": "integer"
     }
   }
   ```
 - **Error Codes**:
   - `422`: Invalid parameters
+  - `500`: Server error
+
+#### Generate Synthetic KQML Message
+- **Endpoint**: `GET /synthetic/kqml`
+- **Description**: Generate a synthetic KQML message
+- **Response**:
+  ```json
+  {
+    "message": "string (KQML message)",
+    "performative": "string",
+    "content": "string",
+    "language": "string",
+    "ontology": "string",
+    "agent_id": "string"
+  }
+  ```
+- **Error Codes**:
   - `500`: Server error
 
 ## Models

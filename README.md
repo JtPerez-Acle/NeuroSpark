@@ -1,4 +1,4 @@
-# KQML Parser Backend
+# KQML Parser Backend 0.2.3
 
 A Multi-Agent Graph Intelligence System for processing and storing KQML messages and agent interactions.
 
@@ -6,18 +6,18 @@ A Multi-Agent Graph Intelligence System for processing and storing KQML messages
 
 - FastAPI-based REST API with WebSocket support for real-time updates
 - Neo4j graph database for persistent storage of agent interactions
-- In-memory database option for testing and development
 - KQML message parsing and validation
 - Synthetic data generation for testing and demonstration
 - Interactive API documentation with Swagger UI
 - Real-time agent interaction monitoring via WebSocket
-- Comprehensive test suite with 100% passing tests and coverage reporting
+- Comprehensive test suite with Neo4j integration testing
+- Extensive logging and monitoring capabilities
 
 ## Prerequisites
 
 - Python 3.11+
 - Neo4j 5.x
-- Docker (optional, for running Neo4j)
+- Docker and Docker Compose
 
 ## Installation
 
@@ -38,24 +38,123 @@ source venv/bin/activate  # On Windows: venv\Scripts\activate
 pip install -e ".[test]"
 ```
 
-4. Start Neo4j:
-
-Using Docker:
+4. Start Neo4j and the application:
 ```bash
-docker run -d --name neo4j \
-  -p 7474:7474 -p 7687:7687 \
-  -e NEO4J_AUTH=neo4j/testpassword \
-  neo4j:latest
+docker-compose up -d
 ```
 
-Or use your existing Neo4j installation.
+This will start both Neo4j and the FastAPI application in containers.
 
 ## Environment Variables
 
 The application uses the following environment variables for Neo4j configuration:
 - `NEO4J_URI`: Neo4j connection URI (default: `bolt://localhost:7687`)
 - `NEO4J_USER`: Neo4j username (default: `neo4j`)
-- `NEO4J_PASSWORD`: Neo4j password (default: `testpassword`)
+- `NEO4J_PASSWORD`: Neo4j password (default: `kqml_dev_2025`)
+
+These variables are automatically set in the `docker-compose.yml` file. For local development without Docker:
+```bash
+export NEO4J_URI=bolt://localhost:7687
+export NEO4J_USER=neo4j
+export NEO4J_PASSWORD=kqml_dev_2025
+```
+
+## Running Tests
+
+The test suite uses a containerized Neo4j instance for all database operations. This ensures that tests run in an environment that matches production.
+
+### Using run_tests.sh (Recommended)
+
+We provide a convenient script that handles the entire test setup and execution:
+
+```bash
+./run_tests.sh
+```
+
+This script will:
+1. Clean up any existing test containers and volumes
+2. Build a fresh test environment using Docker Compose
+3. Start a Neo4j container configured specifically for testing
+4. Run the test suite with coverage reporting
+5. Clean up all test containers and volumes after completion
+
+The script uses `docker-compose.test.yml` which:
+- Runs Neo4j in a temporary filesystem (tmpfs) for fast testing
+- Ensures proper isolation between test runs
+- Matches the production environment configuration
+- Provides health checks to ensure Neo4j is ready before tests start
+
+### Manual Testing
+
+If you need more control over the test environment, you can run the components manually:
+
+1. Start the test Neo4j container:
+```bash
+docker-compose -f docker-compose.test.yml up -d neo4j
+```
+
+2. Run the tests:
+```bash
+pytest -v --cov=app --cov-report=term-missing
+```
+
+This will:
+- Run all tests against the Neo4j database
+- Generate a coverage report
+- Validate all database operations
+- Test error handling and edge cases
+- Verify logging and monitoring
+
+### Test Flow Visualization
+
+```mermaid
+flowchart TD
+    Start([Start run_tests.sh]) --> Cleanup[Clean up existing containers]
+    Cleanup --> Build[Build test environment]
+    Build -->|Success| StartNeo4j[Start Neo4j container]
+    Build -->|Failure| BuildError[Build Error:<br/>- Invalid Dockerfile<br/>- Missing dependencies<br/>- Permission issues]
+    BuildError -->|Auto| Cleanup
+    
+    StartNeo4j -->|Success| WaitHealth{Wait for<br/>Neo4j health}
+    StartNeo4j -->|Failure| Neo4jError[Neo4j Error:<br/>- Port conflicts<br/>- Volume issues<br/>- Memory limits]
+    Neo4jError -->|Auto| Cleanup
+    
+    WaitHealth -->|Healthy| StartTests[Start test container]
+    WaitHealth -->|Timeout| HealthError[Health Check Error:<br/>- Neo4j not responding<br/>- Network issues]
+    HealthError -->|Auto| Cleanup
+    
+    StartTests -->|Success| RunTests[Run pytest suite]
+    StartTests -->|Failure| TestContainerError[Test Container Error:<br/>- Volume mount issues<br/>- Permission problems]
+    TestContainerError -->|Auto| Cleanup
+    
+    RunTests -->|Pass| FinalCleanup[Clean up all resources]
+    RunTests -->|Fail| TestFailure[Test Failures:<br/>- Failed assertions<br/>- Connection errors<br/>- Timeout issues]
+    TestFailure -->|Auto| FinalCleanup
+    
+    FinalCleanup --> End([End])
+    
+    classDef success fill:#a3e635,stroke:#166534,color:#166534
+    classDef error fill:#fca5a5,stroke:#991b1b,color:#991b1b
+    classDef process fill:#93c5fd,stroke:#1e40af,color:#1e40af
+    classDef decision fill:#fde047,stroke:#854d0e,color:#854d0e
+    
+    class Start,End success
+    class BuildError,Neo4jError,HealthError,TestContainerError,TestFailure error
+    class Cleanup,Build,StartNeo4j,StartTests,RunTests,FinalCleanup process
+    class WaitHealth decision
+```
+
+The diagram shows:
+- 🟦 Blue boxes: Main process steps
+- 🟨 Yellow diamonds: Decision points
+- 🟩 Green boxes: Start/End points
+- 🟥 Red boxes: Potential failure points and their causes
+
+Key features of our test orchestration:
+1. **Automatic Cleanup**: Every failure triggers automatic cleanup to prevent resource leaks
+2. **Health Checks**: Neo4j container must be healthy before tests begin
+3. **Failure Isolation**: Each component (build, Neo4j, tests) fails independently
+4. **Resource Management**: All resources are cleaned up, regardless of success or failure
 
 ## Running the Application
 
@@ -105,7 +204,6 @@ graph TB
         
         subgraph Database Layer
             DBI[Database Interface]
-            MDB[Memory DB]
             NDB[Neo4j DB]
         end
     end
@@ -123,8 +221,7 @@ graph TB
     
     KH --> DBI
     DG --> DBI
-    DBI --> |Development| MDB
-    DBI --> |Production| NDB
+    DBI --> NDB
     NDB --> Neo4j
 ```
 
@@ -176,6 +273,7 @@ erDiagram
         string id
         datetime timestamp
         string description
+        json metrics
     }
 ```
 
@@ -193,143 +291,37 @@ flowchart LR
         Parser[KQML Parser]
         Handler[Message Handler]
         Generator[Data Generator]
-        Router[API Router]
     end
 
     subgraph Storage
-        DB[(Neo4j Database)]
-        Memory[Memory DB]
+        Neo4j[(Neo4j)]
     end
 
     subgraph Output
-        WS[WebSocket Updates]
-        REST[REST Response]
+        WS[WebSocket]
+        API[REST API]
     end
 
-    KQML --> Router
-    Query --> Router
-    Gen --> Router
+    KQML --> Parser
+    Query --> Handler
+    Gen --> Generator
 
-    Router --> Parser
-    Router --> Generator
     Parser --> Handler
-    
-    Handler --> DB
-    Handler --> Memory
-    Generator --> DB
-    Generator --> Memory
+    Handler --> Neo4j
+    Generator --> Neo4j
 
-    DB --> WS
-    DB --> REST
-    Memory --> WS
-    Memory --> REST
-
-    classDef primary fill:#f9f,stroke:#333,stroke-width:2px
-    classDef secondary fill:#bbf,stroke:#333,stroke-width:2px
-    classDef storage fill:#ff9,stroke:#333,stroke-width:2px
-    
-    class Parser,Handler,Generator,Router primary
-    class DB,Memory storage
-    class WS,REST secondary
-```
-
-## Example Usage
-
-### Send a KQML Message
-
-```bash
-curl -X POST "http://localhost:8000/agents/message" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "message": "(tell :sender agent1 :receiver agent2 :content (temperature 25.5))",
-    "sender": "agent1",
-    "receiver": "agent2"
-  }'
-```
-
-### Query Agent Interactions
-
-```bash
-curl -X POST "http://localhost:8000/network/query" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "query": "Find all temperature readings above 25 degrees"
-  }'
-```
-
-### Generate Synthetic Data
-
-```bash
-curl -X POST "http://localhost:8000/synthetic/data?num_runs=2&interactions_per_run=5"
-```
-
-### Connect to WebSocket for Real-time Updates
-
-```javascript
-const ws = new WebSocket('ws://localhost:8000/ws');
-ws.onmessage = function(event) {
-    console.log('New interaction:', JSON.parse(event.data));
-};
-```
-
-## Development
-
-### Running Tests
-
-Run the test suite with Neo4j:
-```bash
-./run_tests.sh
-```
-
-This script will:
-1. Set up the required environment variables
-2. Run all tests with coverage reporting
-3. Generate both HTML and terminal coverage reports
-
-Current test status:
-- Total tests: 36
-- Passing: 36 (100%)
-- Coverage: 61%
-
-### Project Structure
-
-```
-kqml-parser-backend/
-├── app/
-│   ├── __init__.py
-│   ├── main.py              # FastAPI application setup
-│   ├── routes.py            # API endpoints and routing
-│   ├── database/
-│   │   ├── __init__.py
-│   │   ├── base.py         # Database interface
-│   │   ├── memory_db.py    # In-memory implementation
-│   │   └── neo4j_db.py     # Neo4j implementation
-│   ├── data_generator.py    # Synthetic data generation
-│   ├── kqml_handler.py      # KQML message processing
-│   ├── models.py           # Pydantic models
-│   └── websocket_handler.py # WebSocket management
-├── tests/
-│   ├── __init__.py
-│   ├── test_main.py
-│   ├── test_database.py
-│   ├── test_data_generator.py
-│   ├── test_kqml_handler.py
-│   └── test_websocket.py
-├── pyproject.toml          # Project configuration
-├── setup.py               # Package setup
-├── pytest.ini             # Pytest configuration
-├── run_tests.sh          # Test runner script
-└── README.md
+    Neo4j --> API
+    Neo4j --> WS
 ```
 
 ## Contributing
 
 1. Fork the repository
 2. Create a feature branch
-3. Commit your changes
-4. Push to the branch
-5. Create a Pull Request
+3. Make your changes
+4. Run tests to ensure they pass
+5. Submit a pull request
 
 ## License
 
-[MIT License](LICENSE)
+MIT License. See LICENSE file for details.

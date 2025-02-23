@@ -43,4 +43,7 @@ htmlcov/
 .pytest_cache/
 
 # Neo4j
-neo4j/data/
+neo4j/*
+
+# Development
+.windsurfrules

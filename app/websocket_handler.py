@@ -1,8 +1,11 @@
-"""WebSocket handler for real-time communication."""
+"""WebSocket handling module."""
 from enum import Enum
 from typing import Dict, Set, List, Any, Optional
 from fastapi import WebSocket
 from pydantic import BaseModel
+from loguru import logger
+from datetime import datetime
+from uuid import uuid4
 
 
 class ConnectionType(str, Enum):
@@ -63,11 +66,29 @@ class ConnectionManager:
         connection = WebSocketConnection(client_id, connection_type)
         connection.websocket = websocket
         connection.is_active = True
+        logger.info(
+            "New WebSocket connection",
+            extra={
+                "type": "websocket",
+                "data": {
+                    "connection_id": client_id,
+                    "client_ip": websocket.client.host,
+                    "user_agent": websocket.headers.get("user-agent")
+                }
+            }
+        )
         self.active_connections[client_id] = connection
 
     async def disconnect(self, client_id: str) -> None:
         """Disconnect a WebSocket connection."""
         if client_id in self.active_connections:
+            logger.info(
+                "WebSocket disconnected",
+                extra={
+                    "type": "websocket",
+                    "data": {"connection_id": client_id}
+                }
+            )
             connection = self.active_connections[client_id]
             connection.is_active = False
             if connection.websocket:
@@ -125,9 +146,31 @@ class WebSocketManager:
                 try:
                     await connection.send_message(message)
                     recipients.append(client_id)
-                except Exception:
+                except Exception as e:
+                    logger.error(
+                        "Failed to send WebSocket message",
+                        extra={
+                            "type": "websocket",
+                            "data": {
+                                "connection_id": client_id,
+                                "error": str(e)
+                            }
+                        }
+                    )
                     await self.disconnect(client_id)
         
+        logger.info(
+            "Broadcast WebSocket message",
+            extra={
+                "type": "websocket",
+                "data": {
+                    "total_connections": len(self.connection_manager.active_connections),
+                    "success_count": len(recipients),
+                    "error_count": len(self.connection_manager.active_connections) - len(recipients),
+                    "process_time_ms": 0  # Not implemented
+                }
+            }
+        )
         return recipients
 
     async def broadcast_to_agent(
@@ -153,7 +196,29 @@ class WebSocketManager:
                 try:
                     await connection.send_message(message)
                     recipients.append(agent_id)
-                except Exception:
+                except Exception as e:
+                    logger.error(
+                        "Failed to send WebSocket message",
+                        extra={
+                            "type": "websocket",
+                            "data": {
+                                "connection_id": agent_id,
+                                "error": str(e)
+                            }
+                        }
+                    )
                     await self.disconnect(agent_id)
         
+        logger.info(
+            "Broadcast WebSocket message to agent",
+            extra={
+                "type": "websocket",
+                "data": {
+                    "total_connections": len(self.connection_manager.active_connections),
+                    "success_count": len(recipients),
+                    "error_count": len(self.connection_manager.active_connections) - len(recipients),
+                    "process_time_ms": 0  # Not implemented
+                }
+            }
+        )
         return recipients
