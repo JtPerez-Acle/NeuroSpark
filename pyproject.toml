@@ -1,11 +1,11 @@
 [project]
 name = "agent-interaction-backend"
-version = "0.7.0"
+version = "0.7.1"
 description = "Multi-Agent Graph Intelligence System with ArangoDB - Backend"
 
 [tool.poetry]
 name = "agent-interaction-backend"
-version = "0.7.0"
+version = "0.7.1"
 description = "Multi-Agent Graph Intelligence System with ArangoDB - Backend"
 authors = ["Your Name <your.email@example.com>"]
 packages = [

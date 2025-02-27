@@ -4,19 +4,21 @@ services:
   # Setup service to ensure ArangoDB is ready
   # This service acts as a coordination point that:
   # 1. Waits for ArangoDB to fully initialize
-  # 2. Continuously checks if ArangoDB is responding to requests
-  # 3. Only exits successfully after confirming ArangoDB is ready to accept connections
+  # 2. Continuously checks if ArangoDB is accepting connections
+  # 3. Only exits successfully after confirming ArangoDB is ready
   # 4. Acts as a dependency for the test service, ensuring tests only run when the DB is ready
   setup:
     image: arangodb:3.11
     command: >
       sh -c "
         echo 'Waiting for ArangoDB to start...' &&
-        while ! wget -q --spider --user=root --password=password http://arangodb:8529/_api/version; do
+        until nc -z arangodb 8529; do
           echo 'ArangoDB is not ready yet...'
           sleep 2
         done &&
         echo 'ArangoDB is ready for connections!' &&
+        echo 'Waiting for extra stability time...' &&
+        sleep 5 &&
         exit 0
       "
     depends_on:
@@ -72,9 +74,7 @@ services:
       sh -c "
         echo 'Starting tests...' &&
         cd /app &&
-        python -m pytest tests/arango_tests -v &&
-        python -m pytest tests/test_database.py tests/test_clear_database.py -v &&
-        python -m pytest tests/test_main.py -v --cov=app --cov-report=term-missing
+        python -m pytest tests/ -v --cov=app --cov-report=term-missing
       "
 
 # Shared network to ensure all services can communicate with each other

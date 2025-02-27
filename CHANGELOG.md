@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.1] - 2025-02-27
+
+### Added
+- Comprehensive Docker deployment scripts for different environments:
+  - `start.sh` for production deployment with full monitoring
+  - `start_dev.sh` for lightweight development setup
+  - `stop.sh` for graceful shutdown of all services
+- Enhanced test infrastructure with full test suite covering all 57 tests
+- Improved database connection handling with better retry logic
+- Additional documentation and usage examples
+
+### Changed
+- Improved ArangoDB health check mechanism for better reliability
+- Enhanced test fixtures with proper isolation and teardown
+- Updated README with latest features and deployment options
+- Updated Docker Compose files for better service coordination
+
+### Fixed
+- Fixed ArangoDB health check issues in Docker containers
+- Fixed connection retry handling in database layer
+- Fixed test reliability issues with better synchronization
+- Fixed Docker testing environment for consistent results
+
 ## [0.7.0] - 2025-02-27
 
 ### Added

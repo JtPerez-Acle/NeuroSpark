@@ -1,4 +1,4 @@
-# Agent Interaction Backend v0.7.0
+# Agent Interaction Backend v0.7.1
 
 A Multi-Agent Graph Intelligence System for processing, storing, and analyzing agent interactions.
 
@@ -11,9 +11,12 @@ A Multi-Agent Graph Intelligence System for processing, storing, and analyzing a
 - Synthetic data generation for testing and demonstration
 - Interactive API documentation with Swagger UI
 - Real-time agent interaction monitoring via WebSocket
-- Comprehensive test suite with ArangoDB integration testing
-- Extensive logging and monitoring capabilities
-- Docker containers for both backend and frontend services
+- Comprehensive test suite with ArangoDB integration testing (57 tests)
+- Extensive logging and monitoring with Prometheus/Grafana integration
+- Docker containers with flexible deployment options:
+  - Production mode with full monitoring stack
+  - Development mode with minimal components
+  - Automated testing environment with containerized tests
 
 ## System Overview
 
@@ -161,10 +164,10 @@ cd agent-interaction-backend
 ```bash
 ./setup.sh
 ```
-This script guides you through the initial setup with:
+This interactive script guides you through the first-time setup with:
 - Customizable ArangoDB password configuration
-- Complete services startup
-- Database connectivity verification
+- Complete services startup with a clean environment
+- Database connectivity verification and troubleshooting
 - Summary of available commands
 
 ### Production Deployment
@@ -185,6 +188,12 @@ Starts a lightweight environment with:
 - ArangoDB database
 - Backend FastAPI service
 - Optimized for development without monitoring overhead
+
+### Shutdown
+```bash
+./stop.sh
+```
+Gracefully stops all running services.
 
 ### Manual Local Development
 ```bash

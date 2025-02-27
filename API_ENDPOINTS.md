@@ -1,6 +1,6 @@
 # API Endpoints Documentation
 
-This document provides detailed information about all available API endpoints in the Agent Interaction Backend [0.7.0].
+This document provides detailed information about all available API endpoints in the Agent Interaction Backend [0.7.1].
 
 ## Base URL
 
