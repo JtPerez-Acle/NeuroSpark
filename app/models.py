@@ -2,80 +2,73 @@
 from datetime import datetime
 from typing import Dict, Any, List, Optional
 import re
+import uuid
 from pydantic import BaseModel, Field, validator
 
-class KQMLMessageModel(BaseModel):
-    """Model for KQML messages."""
-    performative: str = Field(..., description="KQML performative")
-    agent_id: str = Field(..., description="ID of the agent sending the message")
-    content: Dict[str, Any] = Field(..., description="Content of the message")
-    language: Optional[str] = Field(default="KQML", description="Message language")
-    ontology: Optional[str] = Field(default=None, description="Message ontology")
-
+class AgentInteraction(BaseModel):
+    """Model for agent interactions."""
+    interaction_id: str = Field(default_factory=lambda: str(uuid.uuid4()).replace('-', '_'), description="Unique identifier for the interaction")
+    timestamp: datetime = Field(default_factory=datetime.now, description="When the interaction occurred")
+    sender_id: str = Field(..., description="ID of the sending agent")
+    receiver_id: str = Field(..., description="ID of the receiving agent")
+    
+    # Content fields
+    topic: str = Field(..., description="Main subject/topic of the interaction")
+    message: str = Field(..., description="Actual content of the message")
+    
+    # Contextual fields
+    run_id: Optional[str] = Field(None, description="ID of the simulation/experiment run")
+    interaction_type: str = Field(default="message", description="Type of interaction (message, query, response, etc)")
+    
+    # Metrics/Analysis fields
+    sentiment: Optional[float] = Field(None, description="Sentiment score of the interaction (-1 to 1)")
+    priority: Optional[int] = Field(None, description="Priority level of the message (1-5)")
+    duration_ms: Optional[int] = Field(None, description="Processing time in milliseconds")
+    
+    # Extensibility
+    metadata: Dict[str, Any] = Field(default_factory=dict, description="Additional custom metadata")
+    
     @classmethod
-    def from_string(cls, kqml_str: str) -> "KQMLMessageModel":
-        """Create a KQMLMessageModel from a KQML string."""
-        # Extract performative
-        perf_match = re.match(r'\s*\(\s*(\w+)', kqml_str)
-        if not perf_match:
-            raise ValueError("Invalid KQML message: no performative found")
-        performative = perf_match.group(1)
-
-        # Extract content using basic pattern matching
-        content_match = re.search(r':content\s+(\{[^}]+\}|\([^)]+\)|\S+)', kqml_str)
-        content = {} if not content_match else eval(content_match.group(1))
-
-        # Extract agent ID (sender)
-        agent_match = re.search(r':sender\s+(\S+)', kqml_str)
-        agent_id = agent_match.group(1) if agent_match else "unknown"
-
-        # Extract optional fields
-        language_match = re.search(r':language\s+(\S+)', kqml_str)
-        language = language_match.group(1) if language_match else "KQML"
-
-        ontology_match = re.search(r':ontology\s+(\S+)', kqml_str)
-        ontology = ontology_match.group(1) if ontology_match else None
-
-        return cls(
-            performative=performative,
-            agent_id=agent_id,
-            content=content,
-            language=language,
-            ontology=ontology
-        )
-        
-    @classmethod
-    def valid_performatives(cls) -> List[str]:
-        """Get list of valid KQML performatives."""
+    def interaction_types(cls) -> List[str]:
+        """Get list of valid interaction types."""
         return [
-            "achieve", "advertise", "ask-about", "ask-all", "ask-if", "ask-one",
-            "break", "broadcast", "broker-all", "broker-one", "deny", "discard",
-            "error", "evaluate", "forward", "generator", "insert", "monitor",
-            "next", "pipe", "ready", "recommend-all", "recommend-one", "recruit-all",
-            "recruit-one", "register", "reply", "rest", "sorry", "stream-about",
-            "stream-all", "subscribe", "tell", "transport-address", "unregister",
-            "untell", "wait"
+            "message", "query", "response", "notification", "request", 
+            "broadcast", "alert", "command", "report", "update"
         ]
-        
-    @validator('performative')
-    def validate_performative(cls, value):
-        """Validate performative is a known KQML performative."""
-        if value not in cls.valid_performatives():
-            raise ValueError(f"Invalid performative: {value}. Must be one of: {', '.join(cls.valid_performatives())}")
-        return value
-        
-    @validator('agent_id')
+    
+    @validator('sender_id', 'receiver_id')
     def validate_agent_id(cls, value):
         """Validate agent ID is not empty."""
         if not value or not value.strip():
             raise ValueError("Agent ID cannot be empty")
         return value.strip()
-        
-    @validator('content')
+    
+    @validator('topic', 'message')
     def validate_content(cls, value):
         """Validate content is not empty."""
-        if not value:
-            raise ValueError("Content cannot be empty")
+        if not value or not value.strip():
+            raise ValueError("Field cannot be empty")
+        return value.strip()
+    
+    @validator('interaction_type')
+    def validate_interaction_type(cls, value):
+        """Validate interaction type is valid."""
+        if value not in cls.interaction_types():
+            raise ValueError(f"Invalid interaction type: {value}. Must be one of: {', '.join(cls.interaction_types())}")
+        return value
+    
+    @validator('priority')
+    def validate_priority(cls, value):
+        """Validate priority is in range 1-5."""
+        if value is not None and (value < 1 or value > 5):
+            raise ValueError("Priority must be between 1 and 5")
+        return value
+    
+    @validator('sentiment')
+    def validate_sentiment(cls, value):
+        """Validate sentiment is in range -1 to 1."""
+        if value is not None and (value < -1 or value > 1):
+            raise ValueError("Sentiment must be between -1 and 1")
         return value
 
 class GraphNode(BaseModel):

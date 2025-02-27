@@ -1,4 +1,4 @@
-"""API routes for the KQML Parser Backend."""
+"""API routes for the Agent Interaction Backend."""
 from datetime import datetime, timezone, timedelta
 import logging
 from typing import Dict, Any, List, Optional
@@ -7,10 +7,18 @@ from fastapi import APIRouter, FastAPI, Request, HTTPException, Query, WebSocket
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ValidationError
 
-from .models import KQMLMessageModel, GraphQuery, SyntheticDataParams
+from pydantic import BaseModel, Field
+from .models import AgentInteraction, GraphQuery, SyntheticDataParams
 from .database import get_database
 from .websocket_handler import ConnectionManager
 from .data_generator import DataGenerator
+
+# Define models for database administration
+class DatabaseOperation(BaseModel):
+    """Database operation response."""
+    success: bool = Field(..., description="Success status")
+    message: str = Field(..., description="Operation message")
+    details: Dict[str, Any] = Field(default_factory=dict, description="Operation details")
 
 # Configure logging
 logger = logging.getLogger("kqml-parser-backend")
@@ -19,12 +27,15 @@ logger = logging.getLogger("kqml-parser-backend")
 agent_router = APIRouter()
 network_router = APIRouter()
 synthetic_router = APIRouter()
+generate_router = APIRouter()  # New router for generate endpoints
+interactions_router = APIRouter()  # New router for interactions
+admin_router = APIRouter()  # New router for admin operations
 
 def get_db(request: Request):
     """Get database instance from app state."""
     return request.app.state.db
 
-@agent_router.post("/",
+@agent_router.post("",
     response_model=Dict[str, Any],
     summary="Create Agent",
     description="Create a new agent.",
@@ -60,57 +71,131 @@ async def create_agent(agent_data: Dict[str, Any], request: Request) -> Dict[str
         logger.error(f"Error creating agent: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@agent_router.post("/message",
+@interactions_router.get("/{interaction_id}",
     response_model=Dict[str, Any],
-    summary="Store Agent Message",
-    description="Store a KQML message from an agent.",
-    response_description="Status of message storage.",
+    summary="Get Interaction",
+    description="Get a specific interaction by ID.",
+    response_description="Interaction details.",
     responses={
-        422: {"description": "Invalid message data"},
+        404: {"description": "Interaction not found"},
         500: {"description": "Internal server error"}
     }
 )
-async def store_agent_message(message: KQMLMessageModel, request: Request) -> Dict[str, Any]:
-    """Store a KQML message from an agent."""
+async def get_interaction(interaction_id: str, request: Request) -> Dict[str, Any]:
+    """Get a specific interaction by ID."""
     try:
         db = get_db(request)
-        message_id = str(uuid.uuid4())
-        run_id = str(uuid.uuid4())
+        interaction = await db.get_interaction(interaction_id)
+        if not interaction:
+            raise HTTPException(status_code=404, detail=f"Interaction {interaction_id} not found")
+        return interaction
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        logger.error(f"Error getting interaction: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@interactions_router.get("",
+    response_model=List[Dict[str, Any]],
+    summary="Get Interactions",
+    description="Get all interactions, with optional filtering.",
+    response_description="List of interactions.",
+    responses={
+        500: {"description": "Internal server error"}
+    }
+)
+async def get_interactions(
+    request: Request,
+    limit: Optional[int] = Query(100, description="Maximum number of interactions to return")
+) -> List[Dict[str, Any]]:
+    """Get interactions with optional filtering."""
+    try:
+        db = get_db(request)
+        interactions = await db.get_interactions(limit)
+        return interactions
+    except Exception as e:
+        logger.error(f"Error getting interactions: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@interactions_router.post("",
+    response_model=Dict[str, Any],
+    summary="Store Agent Interaction",
+    description="Store an interaction between agents.",
+    response_description="Status of interaction storage.",
+    responses={
+        422: {"description": "Invalid interaction data"},
+        500: {"description": "Internal server error"}
+    }
+)
+async def store_interaction(interaction: AgentInteraction, request: Request) -> Dict[str, Any]:
+    """Store an interaction between agents."""
+    try:
+        db = get_db(request)
         
-        # Store run first
-        run_data = {
-            "id": run_id,
-            "agent_id": message.agent_id,
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-            "status": "completed",  # Default status for message runs
-            "metrics": {}  # Empty metrics for message runs
-        }
-        await db.store_run(run_data)
+        # Set timestamp to current time if not provided
+        if not interaction.timestamp:
+            interaction.timestamp = datetime.now(timezone.utc)
         
-        # Store message
-        message_data = {
-            "id": message_id,
-            "performative": message.performative,
-            "content": message.content,
-            "language": message.language,
-            "ontology": message.ontology,
-            "agent_id": message.agent_id,
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-            "run_id": run_id
+        # Generate run_id if not provided
+        if not interaction.run_id:
+            interaction.run_id = str(uuid.uuid4())
+            
+            # Store run data
+            run_data = {
+                "id": interaction.run_id,
+                "agent_id": interaction.sender_id,
+                "timestamp": interaction.timestamp.isoformat(),
+                "status": "completed",
+                "metrics": {}
+            }
+            await db.store_run(run_data)
+        
+        # Store interaction
+        interaction_data = {
+            "id": interaction.interaction_id,
+            "sender_id": interaction.sender_id,
+            "receiver_id": interaction.receiver_id,
+            "topic": interaction.topic,
+            "message": interaction.message,
+            "interaction_type": interaction.interaction_type,
+            "timestamp": interaction.timestamp.isoformat(),
+            "run_id": interaction.run_id,
+            "priority": interaction.priority,
+            "sentiment": interaction.sentiment,
+            "duration_ms": interaction.duration_ms,
+            "metadata": interaction.metadata
         }
-        await db.store_message(message_data)
+        await db.store_interaction(interaction_data)
         
         return {
             "status": "success",
-            "message_id": message_id,
-            "run_id": run_id,
-            "message": message.content
+            "interaction_id": interaction.interaction_id,
+            "run_id": interaction.run_id,
+            "topic": interaction.topic
         }
     except Exception as e:
-        logger.error(f"Error storing message: {str(e)}")
+        logger.error(f"Error storing interaction: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@agent_router.get("/interactions",
+@agent_router.post("/message",
+    response_model=Dict[str, Any],
+    summary="Store Agent Interaction (Legacy)",
+    description="Store an interaction between agents (legacy endpoint, use /interactions instead).",
+    response_description="Status of interaction storage.",
+    responses={
+        422: {"description": "Invalid interaction data"},
+        500: {"description": "Internal server error"}
+    },
+    deprecated=True
+)
+async def store_agent_interaction(interaction: AgentInteraction, request: Request) -> Dict[str, Any]:
+    """Store an interaction between agents (legacy endpoint)."""
+    # Log a warning about the deprecated endpoint
+    logger.warning("The /agents/message endpoint is deprecated. Please use /interactions instead.")
+    # Use the new endpoint logic
+    return await store_interaction(interaction, request)
+
+@agent_router.get("/{agent_id}/interactions",
     response_model=List[Dict[str, Any]],
     summary="Get Agent Interactions",
     description="Get all interactions associated with an agent.",
@@ -125,9 +210,8 @@ async def get_agent_interactions(agent_id: str, request: Request) -> List[Dict[s
     try:
         db = get_db(request)
         # First check if agent exists
-        try:
-            await db.get_agent(agent_id)
-        except ValueError:
+        agent = await db.get_agent(agent_id)
+        if agent is None:
             raise HTTPException(status_code=404, detail=f"Agent {agent_id} not found")
         
         interactions = await db.get_agent_interactions(agent_id)
@@ -138,7 +222,7 @@ async def get_agent_interactions(agent_id: str, request: Request) -> List[Dict[s
         logger.error(f"Error getting agent interactions: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@agent_router.get("/runs",
+@agent_router.get("/{agent_id}/runs",
     response_model=List[Dict[str, Any]],
     summary="Get Agent Runs",
     description="Get all runs associated with an agent.",
@@ -153,9 +237,8 @@ async def get_agent_runs(agent_id: str, request: Request) -> List[Dict[str, Any]
     try:
         db = get_db(request)
         # First check if agent exists
-        try:
-            await db.get_agent(agent_id)
-        except ValueError:
+        agent = await db.get_agent(agent_id)
+        if agent is None:
             raise HTTPException(status_code=404, detail=f"Agent {agent_id} not found")
             
         runs = await db.get_runs(agent_id)
@@ -327,13 +410,13 @@ async def query_network(query: GraphQuery, request: Request) -> Dict[str, Any]:
         logger.error(f"Error querying network data: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@synthetic_router.post("/data",
+@generate_router.post("/data",
     response_model=Dict[str, Any],
     summary="Generate Synthetic Data",
     description="Generate synthetic data for testing.",
     response_description="Generated synthetic data."
 )
-async def generate_synthetic_data(params: SyntheticDataParams, request: Request) -> Dict[str, Any]:
+async def generate_data(params: SyntheticDataParams, request: Request) -> Dict[str, Any]:
     """Generate synthetic data for testing."""
     try:
         db = get_db(request)
@@ -358,28 +441,86 @@ async def generate_synthetic_data(params: SyntheticDataParams, request: Request)
         logger.error(f"Error generating synthetic data: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@synthetic_router.post("/kqml",
+@generate_router.post("/kqml",
     response_model=Dict[str, Any],
-    summary="Generate Synthetic KQML",
-    description="Generate a synthetic KQML message.",
-    response_description="Generated KQML message."
+    summary="Generate Synthetic Interaction",
+    description="Generate a synthetic agent interaction.",
+    response_description="Generated agent interaction."
 )
-async def generate_synthetic_kqml(request: Request) -> Dict[str, Any]:
-    """Generate a synthetic KQML message."""
+async def generate_kqml(request: Request) -> Dict[str, Any]:
+    """Generate a synthetic agent interaction."""
     try:
+        from app.kqml_handler import generate_synthetic_interaction as gen_interaction
+        
+        # Generate sender and receiver agents
         generator = DataGenerator()
         sender = generator.create_agent_profile("sensor", "temperature")
         receiver = generator.create_agent_profile("coordinator", "system")
         
-        interaction = generator.generate_interaction(sender, receiver)
+        # Generate topic and message content
+        topic = "temperature_reading"
+        message = f"Current temperature is {generator.random_float(15.0, 30.0):.1f}°C"
         
-        return {
-            "performative": interaction["performative"],
-            "content": interaction["content"],
-            "agent_id": interaction["source_id"],
-            "language": "KQML",
-            "ontology": "temperature"
-        }
+        # Generate synthetic interaction
+        interaction_data = gen_interaction(
+            sender_id=sender["id"],
+            receiver_id=receiver["id"],
+            topic=topic,
+            message=message,
+            interaction_type="report",
+            priority=generator.random_int(1, 5)
+        )
+        
+        return interaction_data
     except Exception as e:
-        logger.error(f"Error generating synthetic KQML: {str(e)}")
+        logger.error(f"Error generating synthetic interaction: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@synthetic_router.post("/data",
+    response_model=Dict[str, Any],
+    summary="Generate Synthetic Data (Legacy)",
+    description="Generate synthetic data for testing (legacy endpoint, use /generate/data instead).",
+    response_description="Generated synthetic data.",
+    deprecated=True
+)
+async def generate_synthetic_data(params: SyntheticDataParams, request: Request) -> Dict[str, Any]:
+    """Generate synthetic data for testing (legacy endpoint)."""
+    logger.warning("The /synthetic/data endpoint is deprecated. Please use /generate/data instead.")
+    return await generate_data(params, request)
+
+@synthetic_router.post("/kqml",
+    response_model=Dict[str, Any],
+    summary="Generate Synthetic Interaction (Legacy)",
+    description="Generate a synthetic agent interaction (legacy endpoint, use /generate/kqml instead).",
+    response_description="Generated agent interaction.",
+    deprecated=True
+)
+async def generate_synthetic_kqml(request: Request) -> Dict[str, Any]:
+    """Generate a synthetic agent interaction (legacy endpoint)."""
+    logger.warning("The /synthetic/kqml endpoint is deprecated. Please use /generate/kqml instead.")
+    return await generate_kqml(request)
+
+# Admin endpoints for database management
+@admin_router.post("/database/clear",
+    response_model=DatabaseOperation,
+    summary="Clear Database",
+    description="Clear all data from the database.",
+    response_description="Result of clearing the database.",
+    responses={
+        500: {"description": "Internal server error"}
+    }
+)
+async def clear_database(request: Request) -> DatabaseOperation:
+    """Clear all data from the database."""
+    try:
+        db = get_db(request)
+        result = await db.clear_database()
+        
+        return DatabaseOperation(
+            success=result.get("success", True),
+            message="Database cleared successfully",
+            details=result
+        )
+    except Exception as e:
+        logger.error(f"Error clearing database: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))

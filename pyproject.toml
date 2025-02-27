@@ -1,12 +1,12 @@
 [project]
-name = "kqml-parser-backend"
-version = "0.2.3"
-description = "Multi-Agent Graph Intelligence System - Backend"
+name = "agent-interaction-backend"
+version = "0.7.0"
+description = "Multi-Agent Graph Intelligence System with ArangoDB - Backend"
 
 [tool.poetry]
-name = "kqml-parser-backend"
-version = "0.2.3"
-description = "Multi-Agent Graph Intelligence System - Backend"
+name = "agent-interaction-backend"
+version = "0.7.0"
+description = "Multi-Agent Graph Intelligence System with ArangoDB - Backend"
 authors = ["Your Name <your.email@example.com>"]
 packages = [
     { include = "app" }
@@ -16,13 +16,14 @@ packages = [
 python = ">=3.11,<4.0"
 fastapi = ">=0.68.0,<0.69.0"
 uvicorn = ">=0.15.0,<0.16.0"
-neo4j = ">=5.12.0"
 python-dotenv = ">=0.19.0"
 pydantic = ">=1.8.0,<2.0.0"
 pytz = ">=2021.1"
 loguru = ">=0.7.2,<0.8.0"
 prometheus-client = ">=0.19.0"
 prometheus-fastapi-instrumentator = ">=6.1.0"
+python-arango = ">=7.9.0"
+# We no longer need Neo4j as we've migrated to ArangoDB
 
 [tool.poetry.group.test]
 optional = true

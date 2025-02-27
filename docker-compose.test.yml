@@ -1,40 +1,83 @@
-version: '3.8'
+version: '3'
 
 services:
-  neo4j:
-    image: neo4j:5.15
-    environment:
-      - NEO4J_AUTH=neo4j/testpassword
-      - NEO4J_ACCEPT_LICENSE_AGREEMENT=yes
-      - NEO4J_dbms_connector_bolt_advertised__address=localhost:7687
-    ports:
-      - "7474:7474"  # HTTP
-      - "7687:7687"  # Bolt
-    healthcheck:
-      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:7474 || exit 1"]
-      interval: 5s
-      timeout: 3s
-      retries: 5
-    tmpfs:
-      - /data
-      - /logs
+  # Setup service to ensure ArangoDB is ready
+  # This service acts as a coordination point that:
+  # 1. Waits for ArangoDB to fully initialize
+  # 2. Continuously checks if ArangoDB is responding to requests
+  # 3. Only exits successfully after confirming ArangoDB is ready to accept connections
+  # 4. Acts as a dependency for the test service, ensuring tests only run when the DB is ready
+  setup:
+    image: arangodb:3.11
+    command: >
+      sh -c "
+        echo 'Waiting for ArangoDB to start...' &&
+        while ! wget -q --spider --user=root --password=password http://arangodb:8529/_api/version; do
+          echo 'ArangoDB is not ready yet...'
+          sleep 2
+        done &&
+        echo 'ArangoDB is ready for connections!' &&
+        exit 0
+      "
+    depends_on:
+      - arangodb
+    networks:
+      - test-network
 
+  # ArangoDB service - the database engine
+  # This service:
+  # 1. Runs the ArangoDB database with appropriate configuration
+  # 2. Exposes the default ArangoDB port
+  # 3. Sets the root password for authentication
+  arangodb:
+    image: arangodb:3.11
+    environment:
+      - ARANGO_ROOT_PASSWORD=password
+    ports:
+      - "8529:8529"
+    networks:
+      - test-network
+
+  # Test service - runs the actual test suite
+  # This service:
+  # 1. Builds from the Dockerfile.test configuration
+  # 2. Depends on the setup service, ensuring ArangoDB is ready before tests start
+  # 3. Configures both application and test-specific environment variables
+  # 4. Mounts the current directory to allow direct access to the codebase
+  # 5. Runs pytest with specific test selections and coverage reporting
   test:
     build:
       context: .
       dockerfile: Dockerfile.test
     environment:
-      - NEO4J_URI=bolt://neo4j:7687
-      - NEO4J_USER=neo4j
-      - NEO4J_PASSWORD=testpassword
-      - TESTING=1
+      # Application environment variables
+      - ARANGO_HOST=arangodb
+      - ARANGO_PORT=8529
+      - ARANGO_DB=test_db
+      - ARANGO_USER=root
+      - ARANGO_PASSWORD=password
+      - PYTHONPATH=/app
+      # Test-specific environment variables
+      - TEST_ARANGO_HOST=arangodb
+      - TEST_ARANGO_PORT=8529
+      - TEST_ARANGO_USER=root
+      - TEST_ARANGO_PASSWORD=password
     depends_on:
-      neo4j:
-        condition: service_healthy
+      - setup
+    networks:
+      - test-network
     volumes:
-      - .:/app
-      - test-logs:/app/logs
-    user: "${UID:-1000}:${GID:-1000}"
+      - ./:/app
+    command: >
+      sh -c "
+        echo 'Starting tests...' &&
+        cd /app &&
+        python -m pytest tests/arango_tests -v &&
+        python -m pytest tests/test_database.py tests/test_clear_database.py -v &&
+        python -m pytest tests/test_main.py -v --cov=app --cov-report=term-missing
+      "
 
-volumes:
-  test-logs:
+# Shared network to ensure all services can communicate with each other
+networks:
+  test-network:
+    driver: bridge

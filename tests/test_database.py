@@ -1,19 +1,21 @@
 """Test database operations."""
 import pytest
-from app.database.core.database import Neo4jDatabase
+from app.database.arango.database import ArangoDatabase
 
 class TestDatabaseConnection:
     """Test database connection and operations."""
 
     @pytest.mark.asyncio
-    async def test_database_connection(self, test_db_neo4j):
+    async def test_database_connection(self, test_db_arango):
         """Test database connection."""
-        assert test_db_neo4j.is_connected()
-        await test_db_neo4j.disconnect()
-        assert not test_db_neo4j.is_connected()
+        assert test_db_arango.is_connected()
+        await test_db_arango.disconnect()
+        assert not test_db_arango.is_connected()
+        # Reconnect for other tests
+        await test_db_arango.connect()
 
     @pytest.mark.asyncio
-    async def test_database_operations(self, test_db_neo4j):
+    async def test_database_operations(self, test_db_arango):
         """Test database operations."""
         try:
             # Test storing and retrieving an agent
@@ -22,39 +24,47 @@ class TestDatabaseConnection:
                 "type": "human",
                 "role": "user"
             }
-            await test_db_neo4j.store_agent(agent_data)
+            await test_db_arango.store_agent(agent_data)
             
-            agents = await test_db_neo4j.get_agents()
+            agents = await test_db_arango.get_agents()
             assert len(agents) > 0
-            agent = agents[0]
+            agent = await test_db_arango.get_agent("test_agent")
             assert agent["id"] == "test_agent"
             assert agent["type"] == "human"
             assert agent["role"] == "user"
 
             # Test storing and retrieving an interaction
             interaction_data = {
-                "source_id": "test_agent",
-                "target_id": "test_agent_2",
-                "performative": "tell",
-                "content": {"message": "test"},
+                "id": "test_interaction",
+                "sender_id": "test_agent",
+                "receiver_id": "test_agent_2",
+                "topic": "test_topic",
+                "message": "test message",
+                "interaction_type": "message",
                 "timestamp": "2024-03-20T12:00:00Z"
             }
-            await test_db_neo4j.store_interaction(interaction_data)
+            await test_db_arango.store_interaction(interaction_data)
 
             # Test retrieving interactions
-            interactions = await test_db_neo4j.get_interactions()
+            interactions = await test_db_arango.get_interactions()
             assert len(interactions) > 0
-            assert interactions[0]["source_id"] == "test_agent"
-            assert interactions[0]["target_id"] == "test_agent_2"
+            interaction = await test_db_arango.get_interaction("test_interaction")
+            assert interaction is not None
+            assert interaction["sender_id"] == "test_agent"
+            assert interaction["receiver_id"] == "test_agent_2"
 
             # Test retrieving network data
-            network = await test_db_neo4j.get_network()
+            network = await test_db_arango.get_network()
             assert "nodes" in network
             assert "edges" in network
             assert isinstance(network["nodes"], list)
             assert isinstance(network["edges"], list)
 
+            # Test getting agent interactions
+            agent_interactions = await test_db_arango.get_agent_interactions("test_agent")
+            assert len(agent_interactions) > 0
+            assert agent_interactions[0]["sender_id"] == "test_agent"
+
         finally:
             # Clean up test data
-            async with await test_db_neo4j.get_session() as session:
-                await session.run("MATCH (n) DETACH DELETE n")
+            await test_db_arango.clear_database()

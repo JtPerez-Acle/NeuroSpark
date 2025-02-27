@@ -72,36 +72,28 @@ class TestDataGenerator:
         
         interaction = self.generator.generate_interaction(sender, receiver)
         
-        assert "id" in interaction
-        assert "source_id" in interaction
-        assert "target_id" in interaction
-        assert "performative" in interaction
-        assert "content" in interaction
-        assert "kqml_content" in interaction
+        assert "interaction_id" in interaction
+        assert "sender_id" in interaction
+        assert "receiver_id" in interaction
+        assert "topic" in interaction
+        assert "message" in interaction
+        assert "interaction_type" in interaction
         assert "timestamp" in interaction
-        
-        # Verify KQML message format
-        kqml_msg = interaction["kqml_content"]
-        assert isinstance(kqml_msg, str)
-        assert ":sender" in kqml_msg
-        assert ":receiver" in kqml_msg
-        assert ":content" in kqml_msg
-        assert ":language" in kqml_msg
-        assert ":ontology" in kqml_msg
+        assert "metadata" in interaction
 
-    def test_get_performative_by_type(self):
-        """Test getting performatives for different agent types."""
-        sensor_perf = self.generator.get_performative_by_type("sensor")
-        assert sensor_perf in ["tell", "inform"]
+    def test_get_interaction_type_by_agent(self):
+        """Test getting interaction types for different agent types."""
+        sensor_type = self.generator.get_interaction_type_by_agent("sensor")
+        assert sensor_type in ["report", "notification", "update"]
         
-        analyzer_perf = self.generator.get_performative_by_type("analyzer")
-        assert analyzer_perf in ["evaluate", "inform"]
+        analyzer_type = self.generator.get_interaction_type_by_agent("analyzer")
+        assert analyzer_type in ["query", "report", "alert"]
         
-        coordinator_perf = self.generator.get_performative_by_type("coordinator")
-        assert coordinator_perf in ["achieve", "request"]
+        coordinator_type = self.generator.get_interaction_type_by_agent("coordinator")
+        assert coordinator_type in ["command", "request", "broadcast"]
         
-        actuator_perf = self.generator.get_performative_by_type("actuator")
-        assert actuator_perf in ["tell", "inform"]
+        actuator_type = self.generator.get_interaction_type_by_agent("actuator")
+        assert actuator_type in ["response", "update", "notification"]
 
     def test_generate_synthetic_data(self):
         """Test generating a complete synthetic dataset."""
@@ -123,10 +115,11 @@ class TestDataGenerator:
         
         # Verify interaction structure
         for interaction in data["interactions"]:
-            assert "id" in interaction
-            assert "source_id" in interaction
-            assert "target_id" in interaction
-            assert "performative" in interaction
-            assert "content" in interaction
-            assert "kqml_content" in interaction
+            assert "interaction_id" in interaction
+            assert "sender_id" in interaction
+            assert "receiver_id" in interaction
+            assert "topic" in interaction
+            assert "message" in interaction
+            assert "interaction_type" in interaction
             assert "timestamp" in interaction
+            assert "metadata" in interaction

@@ -7,7 +7,7 @@ setup(
     install_requires=[
         "fastapi>=0.95.0,<0.96.0",
         "uvicorn>=0.18.0,<0.19.0",
-        "neo4j>=5.2.0,<6.0.0",
+        "python-arango>=7.9.0,<8.2.0",
         "pydantic>=1.9.0,<2.0.0",
         "pytest>=7.0.0",
         "pytest-asyncio>=0.18.0",

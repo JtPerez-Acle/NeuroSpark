@@ -1,36 +1,40 @@
 """Database module."""
 from typing import Optional
-import os
+import logging
+from ..config import get_settings
+from .base import DatabaseInterface
+from .arango.database import ArangoDatabase
 
-from .core.database import Neo4jDatabase
+# Configure logging
+logger = logging.getLogger(__name__)
 
-# Default configuration
-DEFAULT_NEO4J_URI = os.getenv("NEO4J_URI", "bolt://neo4j:7687")
-DEFAULT_NEO4J_USER = os.getenv("NEO4J_USER", "neo4j")
-DEFAULT_NEO4J_PASSWORD = os.getenv("NEO4J_PASSWORD", "kqml_dev_2025")
+# Global database instance
+_database: Optional[DatabaseInterface] = None
 
-_database: Optional[Neo4jDatabase] = None
-
-async def create_database(
-    uri: str = DEFAULT_NEO4J_URI,
-    user: str = DEFAULT_NEO4J_USER,
-    password: str = DEFAULT_NEO4J_PASSWORD
-) -> Neo4jDatabase:
+async def create_database() -> DatabaseInterface:
     """Create a new database instance.
     
-    Args:
-        uri: Neo4j URI
-        user: Username
-        password: Password
-        
     Returns:
-        Database instance
+        Database instance (ArangoDB)
     """
-    db = Neo4jDatabase(uri, user, password)
+    settings = get_settings()
+    
+    # Create ArangoDB instance
+    logger.info(f"Connecting to ArangoDB at {settings.ARANGO_HOST}:{settings.ARANGO_PORT}")
+    db = ArangoDatabase(
+        host=settings.ARANGO_HOST,
+        port=settings.ARANGO_PORT,
+        username=settings.ARANGO_USER,
+        password=settings.ARANGO_PASSWORD,
+        db_name=settings.ARANGO_DB
+    )
+    
+    # Connect to the database
     await db.connect()
+    logger.info(f"Successfully connected to ArangoDB database: {settings.ARANGO_DB}")
     return db
 
-async def get_database() -> Neo4jDatabase:
+async def get_database() -> DatabaseInterface:
     """Get the global database instance.
     
     Returns:
