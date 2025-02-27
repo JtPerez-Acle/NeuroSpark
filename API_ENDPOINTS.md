@@ -1,6 +1,6 @@
-# API Endpoints Documentation
+# KQML Parser Backend - API Documentation
 
-This document provides detailed information about all available API endpoints in the Agent Interaction Backend [0.7.1].
+This document provides detailed information about all available API endpoints in the Agent Interaction Backend.
 
 ## Base URL
 
@@ -18,7 +18,18 @@ Provides real-time updates for agent interactions and system events.
 
 ## REST Endpoints
 
-### Interaction Operations
+### Root
+
+- **Endpoint**: `GET /`
+- **Description**: Root endpoint for API verification
+- **Response**: 
+  ```json
+  {
+    "message": "Agent Interaction Backend API"
+  }
+  ```
+
+### Interactions
 
 #### Store Interaction
 - **Endpoint**: `POST /interactions`
@@ -150,6 +161,35 @@ Provides real-time updates for agent interactions and system events.
 - **Error Codes**:
   - `500`: Server error
 
+#### Store Agent Interaction
+- **Endpoint**: `POST /agents/interaction`
+- **Description**: Store an interaction between agents
+- **Request Body**:
+  ```json
+  {
+    "sender_id": "string (agent ID)",
+    "receiver_id": "string (agent ID)",
+    "topic": "string (interaction topic)",
+    "message": "string (interaction content)",
+    "interaction_type": "string (message, query, response, etc.)",
+    "priority": "integer (1-5, optional)",
+    "sentiment": "float (-1 to 1, optional)",
+    "metadata": "object (optional additional data)"
+  }
+  ```
+- **Response**:
+  ```json
+  {
+    "status": "success",
+    "interaction_id": "string (UUID)",
+    "run_id": "string (UUID)",
+    "topic": "string"
+  }
+  ```
+- **Error Codes**:
+  - `422`: Invalid interaction data
+  - `500`: Server error
+
 #### Get Agent Interactions
 - **Endpoint**: `GET /agents/{agent_id}/interactions`
 - **Description**: Get all interactions associated with an agent
@@ -188,7 +228,10 @@ Provides real-time updates for agent interactions and system events.
   [
     {
       "id": "string (UUID)",
-      "timestamp": "string (ISO datetime)"
+      "agent_id": "string",
+      "timestamp": "string (ISO datetime)",
+      "status": "string",
+      "metrics": "object"
     }
   ]
   ```
@@ -196,37 +239,40 @@ Provides real-time updates for agent interactions and system events.
   - `404`: Agent not found
   - `500`: Server error
 
-#### Get Agent Statistics
-- **Endpoint**: `GET /agents/stats`
-- **Description**: Get statistics about agent interactions
+### Network Operations
+
+#### Get Network Graph
+- **Endpoint**: `GET /graph`
+- **Description**: Get all nodes and relationships in the agent network graph
 - **Response**:
   ```json
   {
-    "total_agents": "integer",
-    "total_interactions": "integer",
-    "active_agents": "integer",
-    "interactions_per_agent": {
-      "agent_id": "integer"
-    }
+    "nodes": [
+      {
+        "id": "string",
+        "label": "string",
+        "type": "string",
+        "details": "string (optional)",
+        "timestamp": "string (ISO datetime, optional)"
+      }
+    ],
+    "links": [
+      {
+        "id": "string",
+        "source": "string",
+        "target": "string",
+        "type": "string",
+        "label": "string (optional)"
+      }
+    ]
   }
   ```
 - **Error Codes**:
   - `500`: Server error
 
-#### Store Agent Interaction (Deprecated)
-- **Endpoint**: `POST /agents/message`
-- **Description**: Store an interaction between agents (use `/interactions` instead)
-- **Request Body**: Same as `POST /interactions`
-- **Response**: Same as `POST /interactions`
-- **Error Codes**:
-  - `422`: Invalid interaction data
-  - `500`: Server error
-
-### Network Operations
-
-#### Get Network Graph
+#### Get Network Data
 - **Endpoint**: `GET /network`
-- **Description**: Get all nodes and relationships in the agent network graph
+- **Description**: Get all nodes and relationships in the agent network graph with filtering
 - **Query Parameters**:
   - `node_type`: string (optional) - Filter by node type
   - `time_range`: string (optional) - Time range filter (24h, 7d, 30d, all)
@@ -255,7 +301,7 @@ Provides real-time updates for agent interactions and system events.
 
 #### Query Network
 - **Endpoint**: `POST /network/query`
-- **Description**: Query network graph data with filters
+- **Description**: Query network graph data with complex filters
 - **Request Body**:
   ```json
   {
@@ -271,6 +317,42 @@ Provides real-time updates for agent interactions and system events.
 - **Response**: Same as GET /network
 - **Error Codes**:
   - `422`: Invalid query parameters
+  - `500`: Server error
+
+### Query Operations
+
+#### Query Interactions
+- **Endpoint**: `POST /query`
+- **Description**: Query interactions using natural language
+- **Request Body**:
+  ```json
+  {
+    "query": "string (natural language query)"
+  }
+  ```
+- **Response**:
+  ```json
+  {
+    "interactions": [
+      {
+        "id": "string (UUID)",
+        "sender_id": "string",
+        "receiver_id": "string",
+        "topic": "string",
+        "message": "string",
+        "interaction_type": "string",
+        "timestamp": "string (ISO datetime)",
+        "priority": "integer (1-5)",
+        "sentiment": "float (-1 to 1)",
+        "duration_ms": "integer",
+        "run_id": "string (UUID)",
+        "metadata": "object"
+      }
+    ]
+  }
+  ```
+- **Error Codes**:
+  - `422`: Invalid query
   - `500`: Server error
 
 ### Data Generation Operations
@@ -317,8 +399,8 @@ Provides real-time updates for agent interactions and system events.
   - `500`: Server error
 
 #### Generate Synthetic Interaction
-- **Endpoint**: `POST /generate/kqml`
-- **Description**: Generate a synthetic agent interaction
+- **Endpoint**: `GET /generate/interaction`
+- **Description**: Generate a single synthetic agent interaction
 - **Response**:
   ```json
   {
@@ -329,37 +411,16 @@ Provides real-time updates for agent interactions and system events.
     "message": "string",
     "interaction_type": "string",
     "timestamp": "string (ISO datetime)",
-    "priority": "integer (1-5)",
-    "run_id": "string (UUID)",
-    "metadata": {
-      "synthetic": true,
-      "generated_at": "string (ISO datetime)"
-    }
+    "priority": "integer (1-5)"
   }
   ```
 - **Error Codes**:
   - `500`: Server error
 
-#### Generate Synthetic Data (Deprecated)
-- **Endpoint**: `POST /synthetic/data`
-- **Description**: Generate synthetic data for testing (use `/generate/data` instead)
-- **Request Body**: Same as `POST /generate/data`
-- **Response**: Same as `POST /generate/data`
-- **Error Codes**:
-  - `422`: Invalid parameters
-  - `500`: Server error
-
-#### Generate Synthetic Interaction (Deprecated)
-- **Endpoint**: `POST /synthetic/kqml`
-- **Description**: Generate a synthetic agent interaction (use `/generate/kqml` instead)
-- **Response**: Same as `POST /generate/kqml`
-- **Error Codes**:
-  - `500`: Server error
-
-### Admin Operations
+### Database Operations
 
 #### Clear Database
-- **Endpoint**: `POST /admin/database/clear`
+- **Endpoint**: `DELETE /database/clear`
 - **Description**: Clear all data from the database
 - **Response**:
   ```json
@@ -367,7 +428,6 @@ Provides real-time updates for agent interactions and system events.
     "success": true,
     "message": "Database cleared successfully",
     "details": {
-      "success": true,
       "nodes_deleted": 42,
       "relationships_deleted": 56
     }
@@ -376,62 +436,100 @@ Provides real-time updates for agent interactions and system events.
 - **Error Codes**:
   - `500`: Server error
 
+#### Clean Database
+- **Endpoint**: `POST /database/clean`
+- **Description**: Clean the database by removing orphaned nodes and invalid relationships
+- **Response**:
+  ```json
+  {
+    "success": true,
+    "message": "Database cleaned successfully",
+    "stats": {
+      "orphaned_nodes_removed": 5,
+      "invalid_relationships_removed": 3
+    }
+  }
+  ```
+- **Error Codes**:
+  - `500`: Server error
 
 ## Models
 
 ### AgentInteraction
-```python
+```json
 {
-    "interaction_id": str,       # Unique identifier
-    "sender_id": str,            # Sender agent ID
-    "receiver_id": str,          # Receiver agent ID
-    "topic": str,                # Interaction topic
-    "message": str,              # Interaction content
-    "interaction_type": str,     # Type (message, query, response, etc.)
-    "timestamp": datetime,       # Interaction timestamp
-    "priority": int,             # Priority level (1-5, optional)
-    "sentiment": float,          # Sentiment score (-1 to 1, optional)
-    "duration_ms": int,          # Processing time in milliseconds (optional)
-    "run_id": str,               # Run ID (optional)
-    "metadata": dict             # Additional metadata (optional)
-}
-```
-
-### GraphQuery
-```python
-{
-    "node_type": str,               # Node type to query
-    "relationship_type": str,       # Relationship type (optional)
-    "start_time": str,              # Start time filter (optional)
-    "end_time": str,                # End time filter (optional)
-    "agent_ids": List[str],         # Agent IDs to filter (optional)
-    "limit": int,                   # Result limit (optional)
-    "include_properties": bool      # Include properties in result (optional)
+  "interaction_id": "string (UUID)",
+  "sender_id": "string",
+  "receiver_id": "string",
+  "topic": "string",
+  "message": "string",
+  "interaction_type": "string",
+  "timestamp": "string (ISO datetime)",
+  "priority": "integer (1-5, optional)",
+  "sentiment": "float (-1 to 1, optional)",
+  "duration_ms": "integer (optional)",
+  "run_id": "string (UUID, optional)",
+  "metadata": "object (optional)"
 }
 ```
 
 ### GraphData
-```python
+```json
 {
-    "nodes": List[GraphNode],
-    "links": List[GraphRelationship]
+  "nodes": [
+    {
+      "id": "string",
+      "label": "string",
+      "type": "string",
+      "details": "string (optional)",
+      "timestamp": "string (ISO datetime, optional)"
+    }
+  ],
+  "links": [
+    {
+      "id": "string",
+      "source": "string",
+      "target": "string",
+      "type": "string",
+      "label": "string (optional)"
+    }
+  ]
+}
+```
+
+### GraphQuery
+```json
+{
+  "node_type": "string",
+  "relationship_type": "string (optional)",
+  "start_time": "string (ISO datetime, optional)",
+  "end_time": "string (ISO datetime, optional)",
+  "agent_ids": ["string (optional)"],
+  "limit": "integer (optional)",
+  "include_properties": "boolean (optional, default: true)"
 }
 ```
 
 ### SyntheticDataParams
-```python
+```json
 {
-    "numAgents": int,          # Number of agents to generate
-    "numInteractions": int     # Number of interactions to generate
+  "numAgents": "integer",
+  "numInteractions": "integer"
 }
 ```
 
+### Query
+```json
+{
+  "query": "string (natural language query)"
+}
+```
 
 ### DatabaseOperation
-```python
+```json
 {
-    "success": bool,           # Success status
-    "message": str,            # Operation message
-    "details": dict            # Operation details
+  "success": "boolean",
+  "message": "string",
+  "details": "object"
 }
 ```

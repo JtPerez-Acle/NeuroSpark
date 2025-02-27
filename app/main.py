@@ -35,6 +35,10 @@ app.add_middleware(
 # Initialize WebSocket connection manager
 manager = ConnectionManager()
 
+# Import new routers
+from .graph_routes import graph_router
+from .query_routes import query_router
+
 # Add routers
 app.include_router(agent_router, prefix="/agents", tags=["agents"])
 app.include_router(network_router, prefix="/network", tags=["network"])
@@ -42,6 +46,8 @@ app.include_router(synthetic_router, prefix="/synthetic", tags=["synthetic"])
 app.include_router(generate_router, prefix="/generate", tags=["generate"])
 app.include_router(interactions_router, prefix="/interactions", tags=["interactions"])
 app.include_router(admin_router, prefix="/admin", tags=["admin"])
+app.include_router(graph_router, prefix="/graph", tags=["graph"])
+app.include_router(query_router, prefix="/query", tags=["query"])
 
 # Initialize database
 @app.on_event("startup")

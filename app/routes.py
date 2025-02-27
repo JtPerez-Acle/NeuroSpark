@@ -194,6 +194,20 @@ async def store_agent_interaction(interaction: AgentInteraction, request: Reques
     logger.warning("The /agents/message endpoint is deprecated. Please use /interactions instead.")
     # Use the new endpoint logic
     return await store_interaction(interaction, request)
+    
+@agent_router.post("/interaction",
+    response_model=Dict[str, Any],
+    summary="Store Agent Interaction",
+    description="Store an interaction between agents.",
+    response_description="Status of interaction storage.",
+    responses={
+        422: {"description": "Invalid interaction data"},
+        500: {"description": "Internal server error"}
+    }
+)
+async def store_agent_interaction_new(interaction: AgentInteraction, request: Request) -> Dict[str, Any]:
+    """Store an interaction between agents."""
+    return await store_interaction(interaction, request)
 
 @agent_router.get("/{agent_id}/interactions",
     response_model=List[Dict[str, Any]],
@@ -475,6 +489,41 @@ async def generate_kqml(request: Request) -> Dict[str, Any]:
     except Exception as e:
         logger.error(f"Error generating synthetic interaction: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+        
+@generate_router.get("/interaction",
+    response_model=Dict[str, Any],
+    summary="Generate Synthetic Interaction",
+    description="Generate a synthetic agent interaction without storing it.",
+    response_description="Generated agent interaction."
+)
+async def generate_interaction(request: Request) -> Dict[str, Any]:
+    """Generate a synthetic agent interaction without storing it."""
+    try:
+        from app.kqml_handler import generate_synthetic_interaction as gen_interaction
+        
+        # Generate sender and receiver agents
+        generator = DataGenerator()
+        sender = generator.create_agent_profile("sensor", "temperature")
+        receiver = generator.create_agent_profile("coordinator", "system")
+        
+        # Generate topic and message content
+        topic = "temperature_reading"
+        message = f"Current temperature is {generator.random_float(15.0, 30.0):.1f}°C"
+        
+        # Generate synthetic interaction
+        interaction_data = gen_interaction(
+            sender_id=sender["id"],
+            receiver_id=receiver["id"],
+            topic=topic,
+            message=message,
+            interaction_type="report",
+            priority=generator.random_int(1, 5)
+        )
+        
+        return interaction_data
+    except Exception as e:
+        logger.error(f"Error generating synthetic interaction: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @synthetic_router.post("/data",
     response_model=Dict[str, Any],
@@ -510,8 +559,8 @@ async def generate_synthetic_kqml(request: Request) -> Dict[str, Any]:
         500: {"description": "Internal server error"}
     }
 )
-async def clear_database(request: Request) -> DatabaseOperation:
-    """Clear all data from the database."""
+async def clear_database_post(request: Request) -> DatabaseOperation:
+    """Clear all data from the database using POST method."""
     try:
         db = get_db(request)
         result = await db.clear_database()
@@ -523,4 +572,75 @@ async def clear_database(request: Request) -> DatabaseOperation:
         )
     except Exception as e:
         logger.error(f"Error clearing database: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+        
+@admin_router.delete("/database/clear",
+    response_model=DatabaseOperation,
+    summary="Clear Database",
+    description="Clear all data from the database.",
+    response_description="Result of clearing the database.",
+    responses={
+        500: {"description": "Internal server error"}
+    }
+)
+async def clear_database_delete(request: Request) -> DatabaseOperation:
+    """Clear all data from the database using DELETE method."""
+    try:
+        db = get_db(request)
+        result = await db.clear_database()
+        
+        return DatabaseOperation(
+            success=result.get("success", True),
+            message="Database cleared successfully",
+            details=result
+        )
+    except Exception as e:
+        logger.error(f"Error clearing database: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+        
+@admin_router.post("/database/clean",
+    response_model=Dict[str, Any],
+    summary="Clean Database",
+    description="Clean the database by removing orphaned nodes and invalid relationships.",
+    response_description="Result of cleaning the database.",
+    responses={
+        500: {"description": "Internal server error"}
+    }
+)
+async def clean_database(request: Request) -> Dict[str, Any]:
+    """Clean the database by removing orphaned nodes and invalid relationships."""
+    try:
+        db = get_db(request)
+        
+        # Find and remove orphaned nodes (interactions without agents)
+        interactions = await db.get_interactions(limit=10000)
+        agents = await db.get_agents()
+        
+        agent_ids = set(agent["id"] for agent in agents)
+        orphaned_nodes = 0
+        invalid_relationships = 0
+        
+        # Clean up interactions that reference non-existent agents
+        for interaction in interactions:
+            sender_id = interaction.get("sender_id")
+            receiver_id = interaction.get("receiver_id")
+            
+            if (sender_id and sender_id not in agent_ids) or (receiver_id and receiver_id not in agent_ids):
+                try:
+                    # Delete the interaction with missing agent reference
+                    await db.delete_interaction(interaction["id"])
+                    invalid_relationships += 1
+                except Exception as e:
+                    logger.warning(f"Failed to delete invalid interaction {interaction['id']}: {str(e)}")
+        
+        return {
+            "success": True,
+            "message": "Database cleaned successfully",
+            "stats": {
+                "orphaned_nodes_removed": orphaned_nodes,
+                "invalid_relationships_removed": invalid_relationships
+            }
+        }
+    except Exception as e:
+        logger.error(f"Error cleaning database: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))

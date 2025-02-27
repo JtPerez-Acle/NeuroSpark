@@ -42,8 +42,9 @@ env/
 htmlcov/
 .pytest_cache/
 
-# ArangoDB 
+# ArangoDB / Neo4j
 arangodb/*
+neo4j/*
 
 # Development
 .windsurfrules
