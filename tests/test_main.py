@@ -17,7 +17,7 @@ async def test_root(async_client):
     """Test root endpoint."""
     response = await async_client.get("/")
     assert response.status_code == 200
-    assert response.json() == {"message": "KQML Parser Backend API"}
+    assert response.json() == {"message": "Agent Interaction Backend API"}
 
 @pytest.mark.asyncio
 async def test_agent_message(async_client):
@@ -33,14 +33,16 @@ async def test_agent_message(async_client):
 
     # Then send a message
     message_data = {
-        "agent_id": "test_agent",
-        "performative": "tell",
-        "content": {"message": "test"}
+        "sender_id": "test_agent",
+        "receiver_id": "test_agent_2",
+        "topic": "test_topic",
+        "message": "Test message content",
+        "interaction_type": "message"
     }
     response = await async_client.post("/agents/message", json=message_data)
     assert response.status_code == 200
     data = response.json()
-    assert "message" in data
+    assert "interaction_id" in data
     assert data["status"] == "success"
 
 @pytest.mark.asyncio
@@ -75,9 +77,11 @@ async def test_agent_interactions(async_client):
     
     # Then send a message
     message_data = {
-        "agent_id": "test_agent",
-        "performative": "tell",
-        "content": {"message": "test"}
+        "sender_id": "test_agent",
+        "receiver_id": "test_agent_2",
+        "topic": "test_topic",
+        "message": "Test message content",
+        "interaction_type": "message"
     }
     response = await async_client.post("/agents/message", json=message_data)
     assert response.status_code == 200
@@ -103,22 +107,24 @@ async def test_nonexistent_agent(async_client):
 async def test_invalid_message(async_client):
     """Test storing an invalid message."""
     # Missing required fields
-    message = {"content": {"temperature": 25.5}}
+    message = {"message": "Test message"}
     response = await async_client.post("/agents/message", json=message)
     assert response.status_code == 422  # Validation error
     
-    # Invalid performative
+    # Invalid interaction type
     message = {
-        "performative": "invalid",
-        "content": {"temperature": 25.5},
-        "agent_id": "test_agent"
+        "sender_id": "test_agent",
+        "receiver_id": "test_agent_2",
+        "topic": "test_topic",
+        "message": "Test message content",
+        "interaction_type": "invalid_type"
     }
     response = await async_client.post("/agents/message", json=message)
     assert response.status_code == 422
 
 @pytest.mark.asyncio
 async def test_generate_synthetic_kqml(async_client):
-    """Test generating synthetic KQML."""
+    """Test generating synthetic interaction."""
     # First create an agent
     agent_data = {
         "id": "test_agent",
@@ -128,18 +134,21 @@ async def test_generate_synthetic_kqml(async_client):
     response = await async_client.post("/agents", json=agent_data)
     assert response.status_code == 200
 
-    # Then generate KQML
-    response = await async_client.post("/generate/kqml")
+    # Then generate interaction
+    response = await async_client.post("/synthetic/kqml")
     assert response.status_code == 200
     data = response.json()
-    assert "performative" in data
-    assert "content" in data
+    assert "interaction_id" in data
+    assert "sender_id" in data
+    assert "receiver_id" in data
+    assert "topic" in data
+    assert "message" in data
 
 @pytest.mark.asyncio
 async def test_generate_synthetic_data(async_client):
     """Test generating synthetic data."""
     # Generate synthetic data
-    response = await async_client.post("/generate/data", json={
+    response = await async_client.post("/synthetic/data", json={
         "numAgents": 2,
         "numInteractions": 1
     })
@@ -196,7 +205,7 @@ async def test_query_network(async_client):
 @pytest.mark.asyncio
 @pytest.mark.parametrize("test_case", [
     ("invalid_message", {"invalid": "data"}, 422),
-    ("missing_agent", {"agent_id": "nonexistent", "performative": "tell", "content": {}}, 404),
+    ("missing_agent", {"id": "nonexistent"}, 404),
     ("invalid_query", {"invalid_field": "value"}, 422),
 ])
 async def test_error_handling(async_client, test_case):
@@ -206,7 +215,7 @@ async def test_error_handling(async_client, test_case):
     if name == "invalid_message":
         response = await async_client.post("/agents/message", json=data)
     elif name == "missing_agent":
-        response = await async_client.get(f"/agents/{data['agent_id']}/interactions")
+        response = await async_client.get(f"/agents/{data['id']}/interactions")
     else:
         response = await async_client.post("/network/query", json=data)
     

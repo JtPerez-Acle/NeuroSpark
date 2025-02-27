@@ -1,5 +1,6 @@
 """Main application module."""
-from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, Request, JSONResponse
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, Request
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field, validator
 from typing import Dict, Any, List, Optional
@@ -9,19 +10,18 @@ from loguru import logger
 import random
 
 from .database import create_database
-from .database.core.connection import Neo4jConnection
 from .monitoring.metrics import instrument_app
 from .monitoring.logging_config import setup_logging
 from .websocket_handler import ConnectionManager
-from .kqml_handler import KQMLMessage, generate_synthetic_kqml
+from .kqml_handler import process_interaction, generate_synthetic_interaction
 from .data_generator import DataGenerator
-from .routes import agent_router, network_router, synthetic_router
+from .routes import agent_router, network_router, synthetic_router, generate_router, interactions_router, admin_router
 
 # Configure logging
 setup_logging()
 
 # Initialize FastAPI app
-app = FastAPI(title="KQML Parser Backend")
+app = FastAPI(title="Agent Interaction Backend")
 
 # Add CORS middleware
 app.add_middleware(
@@ -35,10 +35,19 @@ app.add_middleware(
 # Initialize WebSocket connection manager
 manager = ConnectionManager()
 
+# Import new routers
+from .graph_routes import graph_router
+from .query_routes import query_router
+
 # Add routers
-app.include_router(agent_router, prefix="/api/agents", tags=["agents"])
-app.include_router(network_router, prefix="/api/network", tags=["network"])
-app.include_router(synthetic_router, prefix="/api/generate/synthetic", tags=["synthetic"])
+app.include_router(agent_router, prefix="/agents", tags=["agents"])
+app.include_router(network_router, prefix="/network", tags=["network"])
+app.include_router(synthetic_router, prefix="/synthetic", tags=["synthetic"])
+app.include_router(generate_router, prefix="/generate", tags=["generate"])
+app.include_router(interactions_router, prefix="/interactions", tags=["interactions"])
+app.include_router(admin_router, prefix="/admin", tags=["admin"])
+app.include_router(graph_router, prefix="/graph", tags=["graph"])
+app.include_router(query_router, prefix="/query", tags=["query"])
 
 # Initialize database
 @app.on_event("startup")
@@ -47,9 +56,9 @@ async def startup():
     try:
         db = await create_database()
         app.state.db = db
-        logger.info("Successfully initialized database connection")
+        logger.info("Successfully initialized ArangoDB connection")
     except Exception as e:
-        logger.error(f"Failed to initialize database: {e}")
+        logger.error(f"Failed to initialize ArangoDB: {e}")
         # Don't raise here, let the app start and handle DB errors per-request
         app.state.db = None
 
@@ -76,7 +85,7 @@ async def shutdown():
 @app.get("/")
 async def root():
     """Root endpoint."""
-    return {"message": "KQML Parser Backend API"}
+    return {"message": "Agent Interaction Backend API"}
 
 # Add WebSocket endpoint
 @app.websocket("/ws")

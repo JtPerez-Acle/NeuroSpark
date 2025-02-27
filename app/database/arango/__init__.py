@@ -1,0 +1,1 @@
+"""ArangoDB database module."""

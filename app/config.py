@@ -6,10 +6,12 @@ from pydantic import BaseSettings
 class Settings(BaseSettings):
     """Application settings."""
     
-    # Neo4j settings
-    NEO4J_URI: str = os.getenv("NEO4J_URI", "bolt://localhost:7687")
-    NEO4J_USER: str = os.getenv("NEO4J_USER", "neo4j")
-    NEO4J_PASSWORD: str = os.getenv("NEO4J_PASSWORD", "password")
+    # ArangoDB settings
+    ARANGO_HOST: str = os.getenv("ARANGO_HOST", "localhost")
+    ARANGO_PORT: int = int(os.getenv("ARANGO_PORT", "8529"))
+    ARANGO_DB: str = os.getenv("ARANGO_DB", "agent_interactions")
+    ARANGO_USER: str = os.getenv("ARANGO_USER", "root")
+    ARANGO_PASSWORD: str = os.getenv("ARANGO_PASSWORD", "password")
 
     class Config:
         """Pydantic config."""

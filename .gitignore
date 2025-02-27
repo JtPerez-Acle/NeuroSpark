@@ -42,7 +42,8 @@ env/
 htmlcov/
 .pytest_cache/
 
-# Neo4j
+# ArangoDB / Neo4j
+arangodb/*
 neo4j/*
 
 # Development

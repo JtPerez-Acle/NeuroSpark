@@ -1,71 +1,249 @@
-# KQML Parser Backend 0.2.3
+# Agent Interaction Backend v0.7.1
 
-A Multi-Agent Graph Intelligence System for processing and storing KQML messages and agent interactions.
+A Multi-Agent Graph Intelligence System for processing, storing, and analyzing agent interactions.
 
 ## Features
 
 - FastAPI-based REST API with WebSocket support for real-time updates
-- Neo4j graph database for persistent storage of agent interactions
-- KQML message parsing and validation
+- ArangoDB graph database for persistent storage of agent interactions
+- Enhanced Agent Interaction model with rich metadata
+- Consistent REST API endpoints for interactions, agents, and data generation
 - Synthetic data generation for testing and demonstration
 - Interactive API documentation with Swagger UI
 - Real-time agent interaction monitoring via WebSocket
-- Comprehensive test suite with Neo4j integration testing
-- Extensive logging and monitoring capabilities
+- Comprehensive test suite with ArangoDB integration testing (57 tests)
+- Extensive logging and monitoring with Prometheus/Grafana integration
+- Docker containers with flexible deployment options:
+  - Production mode with full monitoring stack
+  - Development mode with minimal components
+  - Automated testing environment with containerized tests
+
+## System Overview
+
+```mermaid
+graph TD
+    subgraph "Application Components"
+        FE[Frontend UI<br>React + TypeScript]
+        BE[Backend API<br>FastAPI + Python]
+        WS[WebSocket Server]
+        DG[Data Generator]
+    end
+    
+    subgraph "Database"
+        DB[(ArangoDB Graph Database)]
+    end
+    
+    subgraph "Monitoring"
+        PR[Prometheus]
+        GR[Grafana Dashboards]
+        LOG[Logging System]
+    end
+    
+    US[Users/Agents] -->|Interact with| FE
+    FE -->|Send Requests| BE
+    BE -->|Real-time Updates| WS
+    WS -->|Notifications| FE
+    BE -->|Store/Query| DB
+    BE -->|Generate Test Data| DG
+    DG -->|Populate| DB
+    BE -->|Metrics| PR
+    PR -->|Visualize| GR
+    BE -->|Log Events| LOG
+    
+    classDef frontend fill:#42a5f5,stroke:#1565c0,color:#fff
+    classDef backend fill:#66bb6a,stroke:#2e7d32,color:#fff
+    classDef database fill:#ff7043,stroke:#e64a19,color:#fff
+    classDef monitoring fill:#ab47bc,stroke:#7b1fa2,color:#fff
+    classDef user fill:#78909c,stroke:#37474f,color:#fff
+    
+    class FE frontend
+    class BE,WS,DG backend
+    class DB database
+    class PR,GR,LOG monitoring
+    class US user
+```
+
+## Interaction Model
+
+```mermaid
+classDiagram
+    class Agent {
+        +string id
+        +string name
+        +string type
+        +dict metadata
+        +datetime created_at
+        +create()
+        +update()
+        +delete()
+    }
+    
+    class AgentInteraction {
+        +string id
+        +string sender_id
+        +string receiver_id
+        +string topic
+        +int priority (1-5)
+        +float sentiment (-1 to 1)
+        +string content
+        +dict metadata
+        +datetime timestamp
+        +int duration_ms
+        +store()
+        +update()
+        +query()
+    }
+    
+    class Run {
+        +string id
+        +string name
+        +string description
+        +datetime start_time
+        +datetime end_time
+        +dict metrics
+        +create()
+        +get_interactions()
+    }
+    
+    Agent "1" -- "many" AgentInteraction : sends
+    Agent "1" -- "many" AgentInteraction : receives
+    Run "1" -- "many" AgentInteraction : contains
+```
+
+## Data Flow Process
+
+```mermaid
+sequenceDiagram
+    participant Client as Client Application
+    participant API as FastAPI Backend
+    participant Handler as Interaction Handler
+    participant DB as ArangoDB Database
+    participant WS as WebSocket Server
+    
+    Client->>API: POST /interactions
+    Note over API,Handler: Interaction contains:<br>- sender/receiver<br>- topic<br>- priority<br>- sentiment<br>- content<br>- metadata
+    
+    API->>Handler: Process interaction
+    Handler->>DB: Store interaction
+    DB-->>Handler: Confirm storage
+    Handler->>WS: Broadcast update
+    WS-->>Client: Real-time notification
+    Handler-->>API: Return confirmation
+    API-->>Client: 201 Created
+    
+    Client->>API: GET /interactions?filter=params
+    API->>DB: Query interactions
+    DB-->>API: Return matching interactions
+    API-->>Client: Return filtered results
+    
+    Note over Client,WS: For real-time dashboards
+    Client->>WS: Subscribe to updates
+    WS-->>Client: Confirm subscription
+    DB->>WS: New interaction created
+    WS-->>Client: Push notification
+```
 
 ## Prerequisites
 
 - Python 3.11+
-- Neo4j 5.x
+- ArangoDB 3.11+
 - Docker and Docker Compose
+- Node.js 18+ (for frontend development)
 
 ## Installation
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/JtPerez-Acle/kqml-parser-backend
-cd kqml-parser-backend
+git clone https://github.com/JtPerez-Acle/agent-interaction-backend
+cd agent-interaction-backend
 ```
 
-2. Create and activate a virtual environment:
+2. Choose one of the following startup methods:
+
+### Initial Setup (First-time Users)
 ```bash
+./setup.sh
+```
+This interactive script guides you through the first-time setup with:
+- Customizable ArangoDB password configuration
+- Complete services startup with a clean environment
+- Database connectivity verification and troubleshooting
+- Summary of available commands
+
+### Production Deployment
+```bash
+./start.sh
+```
+Starts the full stack with:
+- ArangoDB database
+- Backend FastAPI service
+- Prometheus and Grafana for monitoring
+- Perfect for production or demonstration
+
+### Development Environment
+```bash
+./start_dev.sh
+```
+Starts a lightweight environment with:
+- ArangoDB database
+- Backend FastAPI service
+- Optimized for development without monitoring overhead
+
+### Shutdown
+```bash
+./stop.sh
+```
+Gracefully stops all running services.
+
+### Manual Local Development
+```bash
+# Start ArangoDB with Docker
+docker-compose up -d arangodb
+
+# Backend development setup
 python -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
-```
+poetry install
 
-3. Install dependencies:
-```bash
-pip install -e ".[test]"
-```
+# Run backend server
+poetry run uvicorn app.main:app --reload
 
-4. Start Neo4j and the application:
-```bash
-docker-compose up -d
+# Frontend development setup
+cd ../kqml-parser-frontend
+npm install
+npm run dev
 ```
-
-This will start both Neo4j and the FastAPI application in containers.
 
 ## Environment Variables
 
-The application uses the following environment variables for Neo4j configuration:
-- `NEO4J_URI`: Neo4j connection URI (default: `bolt://localhost:7687`)
-- `NEO4J_USER`: Neo4j username (default: `neo4j`)
-- `NEO4J_PASSWORD`: Neo4j password (default: `kqml_dev_2025`)
+The application uses these environment variables:
 
-These variables are automatically set in the `docker-compose.yml` file. For local development without Docker:
+### ArangoDB Settings
+- `ARANGO_HOST`: ArangoDB host (default: `localhost`)
+- `ARANGO_PORT`: ArangoDB port (default: `8529`)
+- `ARANGO_DB`: ArangoDB database name (default: `agent_interactions`)
+- `ARANGO_USER`: ArangoDB username (default: `root`)
+- `ARANGO_PASSWORD`: ArangoDB password (default: `password`)
+
+These are set in the `docker-compose.yml` file. For local development:
 ```bash
-export NEO4J_URI=bolt://localhost:7687
-export NEO4J_USER=neo4j
-export NEO4J_PASSWORD=kqml_dev_2025
+export ARANGO_HOST=localhost
+export ARANGO_PORT=8529
+export ARANGO_DB=agent_interactions
+export ARANGO_USER=root
+export ARANGO_PASSWORD=password
 ```
+
+> **Note About ArangoDB**: 
+> ArangoDB is a multi-model database that supports document, graph, and key-value storage, making it perfect for our agent interaction system. The web interface (accessible at http://localhost:8529 after starting the containers) provides intuitive tools for visualizing and managing your data.
+>
+> Use the provided `setup.sh` script for an automated, guided setup experience.
 
 ## Running Tests
 
-The test suite uses a containerized Neo4j instance for all database operations. This ensures that tests run in an environment that matches production.
-
 ### Using run_tests.sh (Recommended)
 
-We provide a convenient script that handles the entire test setup and execution:
+We provide a script that handles the test setup and execution:
 
 ```bash
 ./run_tests.sh
@@ -74,23 +252,17 @@ We provide a convenient script that handles the entire test setup and execution:
 This script will:
 1. Clean up any existing test containers and volumes
 2. Build a fresh test environment using Docker Compose
-3. Start a Neo4j container configured specifically for testing
+3. Start an ArangoDB container for testing
 4. Run the test suite with coverage reporting
 5. Clean up all test containers and volumes after completion
 
-The script uses `docker-compose.test.yml` which:
-- Runs Neo4j in a temporary filesystem (tmpfs) for fast testing
-- Ensures proper isolation between test runs
-- Matches the production environment configuration
-- Provides health checks to ensure Neo4j is ready before tests start
-
 ### Manual Testing
 
-If you need more control over the test environment, you can run the components manually:
+For more control over the test environment:
 
-1. Start the test Neo4j container:
+1. Start the test ArangoDB container:
 ```bash
-docker-compose -f docker-compose.test.yml up -d neo4j
+docker-compose -f docker-compose.test.yml up -d arangodb
 ```
 
 2. Run the tests:
@@ -98,68 +270,46 @@ docker-compose -f docker-compose.test.yml up -d neo4j
 pytest -v --cov=app --cov-report=term-missing
 ```
 
-This will:
-- Run all tests against the Neo4j database
-- Generate a coverage report
-- Validate all database operations
-- Test error handling and edge cases
-- Verify logging and monitoring
-
-### Test Flow Visualization
-
-```mermaid
-flowchart TD
-    Start([Start run_tests.sh]) --> Cleanup[Clean up existing containers]
-    Cleanup --> Build[Build test environment]
-    Build -->|Success| StartNeo4j[Start Neo4j container]
-    Build -->|Failure| BuildError[Build Error:<br/>- Invalid Dockerfile<br/>- Missing dependencies<br/>- Permission issues]
-    BuildError -->|Auto| Cleanup
-    
-    StartNeo4j -->|Success| WaitHealth{Wait for<br/>Neo4j health}
-    StartNeo4j -->|Failure| Neo4jError[Neo4j Error:<br/>- Port conflicts<br/>- Volume issues<br/>- Memory limits]
-    Neo4jError -->|Auto| Cleanup
-    
-    WaitHealth -->|Healthy| StartTests[Start test container]
-    WaitHealth -->|Timeout| HealthError[Health Check Error:<br/>- Neo4j not responding<br/>- Network issues]
-    HealthError -->|Auto| Cleanup
-    
-    StartTests -->|Success| RunTests[Run pytest suite]
-    StartTests -->|Failure| TestContainerError[Test Container Error:<br/>- Volume mount issues<br/>- Permission problems]
-    TestContainerError -->|Auto| Cleanup
-    
-    RunTests -->|Pass| FinalCleanup[Clean up all resources]
-    RunTests -->|Fail| TestFailure[Test Failures:<br/>- Failed assertions<br/>- Connection errors<br/>- Timeout issues]
-    TestFailure -->|Auto| FinalCleanup
-    
-    FinalCleanup --> End([End])
-    
-    classDef success fill:#a3e635,stroke:#166534,color:#166534
-    classDef error fill:#fca5a5,stroke:#991b1b,color:#991b1b
-    classDef process fill:#93c5fd,stroke:#1e40af,color:#1e40af
-    classDef decision fill:#fde047,stroke:#854d0e,color:#854d0e
-    
-    class Start,End success
-    class BuildError,Neo4jError,HealthError,TestContainerError,TestFailure error
-    class Cleanup,Build,StartNeo4j,StartTests,RunTests,FinalCleanup process
-    class WaitHealth decision
-```
-
-The diagram shows:
-- 🟦 Blue boxes: Main process steps
-- 🟨 Yellow diamonds: Decision points
-- 🟩 Green boxes: Start/End points
-- 🟥 Red boxes: Potential failure points and their causes
-
-Key features of our test orchestration:
-1. **Automatic Cleanup**: Every failure triggers automatic cleanup to prevent resource leaks
-2. **Health Checks**: Neo4j container must be healthy before tests begin
-3. **Failure Isolation**: Each component (build, Neo4j, tests) fails independently
-4. **Resource Management**: All resources are cleaned up, regardless of success or failure
-
 ## Running the Application
 
-Start the FastAPI server:
+### Using Start Scripts (Recommended)
+
+We provide several scripts to manage the application:
+
+1. **Production Mode:**
 ```bash
+./start.sh
+```
+This script will start the complete stack including:
+- ArangoDB database
+- Backend API service
+- Prometheus for metrics
+- Grafana for dashboards
+- Log aggregator
+
+2. **Development Mode:**
+```bash
+./start_dev.sh
+```
+This starts a minimal environment with:
+- ArangoDB database
+- Backend API service
+Perfect for development when you don't need the full monitoring stack.
+
+3. **Stop Services:**
+```bash
+./stop.sh
+```
+This gracefully stops all running services.
+
+### Manual Startup
+
+For local development without Docker:
+```bash
+# Activate your virtual environment
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+
+# Start the FastAPI server
 uvicorn app.main:app --reload
 ```
 
@@ -169,149 +319,170 @@ The API will be available at:
 - Alternative Documentation (ReDoc): http://localhost:8000/redoc
 - WebSocket: ws://localhost:8000/ws
 
+The Frontend will be available at:
+- http://localhost:3000 (when running the frontend separately)
+
 ## API Endpoints
 
 ### Root Endpoint
 - `GET /` - Get API information
 
-### Agent Interactions
-- `POST /agents/message` - Process a KQML message
-- `GET /agents/{agent_id}/runs` - Get all runs for a specific agent
+### Interaction Management
+- `POST /interactions` - Create a new interaction
+- `GET /interactions` - Get all interactions with optional filtering
+- `GET /interactions/{interaction_id}` - Get a specific interaction
+
+### Agent Management
+- `POST /agents` - Create a new agent
+- `GET /agents` - Get all agents
 - `GET /agents/{agent_id}/interactions` - Get all interactions for a specific agent
+- `GET /agents/{agent_id}/runs` - Get all runs for a specific agent
+- `GET /agents/stats` - Get agent statistics
 
 ### Network Operations
-- `POST /network/query` - Process natural language queries about agent interactions
-- `POST /synthetic/data` - Generate synthetic interaction data
-- `GET /synthetic/kqml` - Generate a synthetic KQML message
+- `GET /network` - Get network graph data with optional filtering
+- `POST /network/query` - Query network graph with specific filters
+
+### Data Generation
+- `POST /generate/data` - Generate synthetic agent and interaction data
+- `POST /generate/kqml` - Generate a synthetic agent interaction
+
+### Deprecated Endpoints (for backward compatibility)
+- `POST /agents/message` - Store an interaction (use `/interactions` instead)
+- `POST /synthetic/data` - Generate synthetic data (use `/generate/data` instead)
+- `POST /synthetic/kqml` - Generate synthetic interactions (use `/generate/kqml` instead)
 
 ### WebSocket
-- `WebSocket /ws` - Real-time agent interaction updates
+- `WebSocket /ws` - Real-time interaction updates
 
-## System Architecture
+## Docker Deployment
 
-```mermaid
-graph TB
-    subgraph Client Applications
-        C1[Web Client]
-        C2[Agent Client]
-    end
-
-    subgraph FastAPI Backend
-        API[FastAPI App]
-        WS[WebSocket Manager]
-        KH[KQML Handler]
-        DG[Data Generator]
-        
-        subgraph Database Layer
-            DBI[Database Interface]
-            NDB[Neo4j DB]
-        end
-    end
-
-    subgraph Storage
-        Neo4j[(Neo4j Database)]
-    end
-
-    C1 --> |HTTP/WS| API
-    C2 --> |HTTP| API
-    API --> |Real-time Updates| WS
-    WS --> |Notifications| C1
-    API --> |Parse Messages| KH
-    API --> |Generate Data| DG
-    
-    KH --> DBI
-    DG --> DBI
-    DBI --> NDB
-    NDB --> Neo4j
-```
-
-## Data Flow
+The full stack can be deployed using Docker Compose:
 
 ```mermaid
-sequenceDiagram
-    participant Agent as Agent Client
-    participant API as FastAPI Backend
-    participant WS as WebSocket
-    participant DB as Neo4j Database
-    participant Client as Web Client
-
-    Agent->>API: Send KQML Message
-    API->>API: Parse & Validate
-    API->>DB: Store Interaction
-    API->>WS: Broadcast Update
-    WS->>Client: Real-time Notification
+graph TD
+    subgraph "Docker Environment"
+        FE[Frontend Container<br>Node.js + Vite]
+        BE[Backend Container<br>FastAPI + Python]
+        DB[ArangoDB Container]
+        NET[Docker Network]
+    end
     
-    Client->>API: Query Interactions
-    API->>DB: Execute Query
-    DB->>API: Return Results
-    API->>Client: Send Response
+    FE -->|port 3000| USER[User Browser]
+    USER -->|port 8000| BE
+    BE -->|http:// port 8529| DB
+    
+    FE --- NET
+    BE --- NET
+    DB --- NET
+    
+    classDef container fill:#2196f3,stroke:#0d47a1,color:#fff
+    classDef network fill:#4caf50,stroke:#1b5e20,color:#fff
+    classDef external fill:#ff9800,stroke:#e65100,color:#fff
+    
+    class FE,BE,DB container
+    class NET network
+    class USER external
 ```
 
 ## Database Schema
+
+### ArangoDB Implementation
+
+The system now uses ArangoDB, a multi-model database that provides excellent graph capabilities while being easier to manage than Neo4j:
 
 ```mermaid
 erDiagram
     AGENT ||--o{ INTERACTION : "SENT"
     AGENT ||--o{ INTERACTION : "RECEIVED_BY"
-    INTERACTION ||--|| RUN : "PART_OF"
+    AGENT ||--o{ PARTICIPATION : "PARTICIPATED_IN"
+    RUN ||--o{ PARTICIPATION : "INCLUDES"
     
     AGENT {
-        string id
-        string type
-        string description
+        string _key "Agent ID"
+        string id "Public ID"
+        string name "Agent name"
+        string type "Agent type"
+        json metadata "Additional properties"
+        datetime timestamp "Creation time"
     }
     
     INTERACTION {
-        string id
-        string message_id
-        string content
-        string performative
-        datetime timestamp
+        string _key "Interaction ID"
+        string _from "Source agent"
+        string _to "Target agent"
+        string id "Public ID"
+        string topic "Interaction topic"
+        int priority "Priority level (1-5)"
+        float sentiment "Sentiment score (-1 to 1)"
+        string message "Interaction content"
+        json metadata "Additional properties"
+        datetime timestamp "When interaction occurred"
+        int duration_ms "Processing time"
+        string run_id "Associated run ID"
     }
     
     RUN {
-        string id
-        datetime timestamp
-        string description
-        json metrics
+        string _key "Run ID"
+        string id "Public ID"
+        string name "Run name"
+        string description "Run description"
+        datetime timestamp "Start time"
+        string status "Run status"
+        json metrics "Performance metrics"
+    }
+    
+    PARTICIPATION {
+        string _from "Agent reference"
+        string _to "Run reference"
+        string role "Agent role (sender/receiver)"
+        string interaction_id "Related interaction"
+        datetime timestamp "Participation time"
     }
 ```
 
-## Component Interaction
+## Monitoring Dashboard
 
 ```mermaid
-flowchart LR
-    subgraph Input
-        KQML[KQML Message]
-        Query[Query Request]
-        Gen[Generate Data]
+graph LR
+    subgraph "Metrics Collection"
+        APP[Application Metrics]
+        SYS[System Metrics]
+        DB[Database Metrics]
     end
-
-    subgraph Processing
-        Parser[KQML Parser]
-        Handler[Message Handler]
-        Generator[Data Generator]
+    
+    subgraph "Monitoring Stack"
+        PROM[Prometheus]
+        GRAF[Grafana]
+        LOGS[Log Aggregator]
     end
-
-    subgraph Storage
-        Neo4j[(Neo4j)]
+    
+    subgraph "Visualization"
+        PERF[Performance Dashboard]
+        ERR[Error Tracking]
+        USAGE[Usage Statistics]
     end
-
-    subgraph Output
-        WS[WebSocket]
-        API[REST API]
-    end
-
-    KQML --> Parser
-    Query --> Handler
-    Gen --> Generator
-
-    Parser --> Handler
-    Handler --> Neo4j
-    Generator --> Neo4j
-
-    Neo4j --> API
-    Neo4j --> WS
+    
+    APP --> PROM
+    SYS --> PROM
+    DB --> PROM
+    
+    APP --> LOGS
+    
+    PROM --> GRAF
+    LOGS --> GRAF
+    
+    GRAF --> PERF
+    GRAF --> ERR
+    GRAF --> USAGE
+    
+    classDef source fill:#4caf50,stroke:#1b5e20,color:#fff
+    classDef processing fill:#ff9800,stroke:#e65100,color:#fff
+    classDef output fill:#2196f3,stroke:#0d47a1,color:#fff
+    
+    class APP,SYS,DB source
+    class PROM,GRAF,LOGS processing
+    class PERF,ERR,USAGE output
 ```
 
 ## Contributing
