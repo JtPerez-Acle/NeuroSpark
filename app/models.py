@@ -104,6 +104,21 @@ class SyntheticDataParams(BaseModel):
     numAgents: int = Field(gt=0, description="Number of agents to generate")
     numInteractions: int = Field(gt=0, description="Number of interactions to generate")
 
+class ScenarioParams(BaseModel):
+    """Model for scenario-based data generation parameters."""
+    scenario: str = Field(..., description="Scenario type (pd, predator_prey, pursuer_evader, search_rescue)")
+    numAgents: int = Field(gt=0, description="Number of agents to generate")
+    numInteractions: int = Field(gt=0, description="Number of interactions to generate")
+    rounds: Optional[int] = Field(None, description="Number of rounds/time steps (scenario-specific)")
+    
+    @validator('scenario')
+    def validate_scenario(cls, value):
+        """Validate scenario type."""
+        valid_scenarios = ["pd", "predator_prey", "pursuer_evader", "search_rescue"]
+        if value not in valid_scenarios:
+            raise ValueError(f"Invalid scenario: {value}. Must be one of: {', '.join(valid_scenarios)}")
+        return value
+
 class RunData(BaseModel):
     """Run data model."""
     run_id: str = Field(..., description="Unique identifier for the run")

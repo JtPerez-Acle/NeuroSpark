@@ -43,109 +43,119 @@ The project aims to build a multi-agent knowledge system where agents exchange K
 4. **Documentation & Continuous Improvement:**
    - Maintain CHANGELOG.md, README.md, and this DEVELOPMENT_PLAN.md to document progress and future updates.
 
-## Current Status (v0.2.2)
+## Current Status (v0.8.2)
 
 ### Completed Features
 - ✅ FastAPI backend implementation with comprehensive endpoint documentation
-- ✅ Neo4j database integration for graph-based storage
-- ✅ KQML message processing and validation
+- ✅ ArangoDB database integration for graph-based storage
+- ✅ Agent interaction processing and validation
 - ✅ Agent interaction tracking and querying
 - ✅ Synthetic data generation for testing
+- ✅ Scenario-based data generation with multiple simulation models
 - ✅ Comprehensive test suite with pytest
 - ✅ API documentation with Swagger/OpenAPI
 - ✅ Error handling and input validation
 - ✅ Async operation support
+- ✅ Docker deployment with docker-compose
+- ✅ NetworkX integration for advanced graph analysis
+- ✅ Graph metrics calculation (density, clustering, connectivity, etc.)
+- ✅ Centrality measures (degree, betweenness, closeness, eigenvector, PageRank)
+- ✅ Community detection algorithms (Louvain, Label Propagation, etc.)
+- ✅ Layout generation for visualization
+- ✅ Temporal analysis of interaction patterns
 
 ### In Progress
 - 🔄 Natural language query processing
-- 🔄 Advanced KQML message parsing
 - 🔄 Real-time agent interaction monitoring
+- 🔄 Frontend integration with graph analysis
 
 ## Future Development
 
-### Short-term Goals (v0.3.0)
-1. Implement advanced query processing using Neo4j's graph capabilities
+### Short-term Goals (v0.9.0)
+1. Implement advanced query processing using ArangoDB's graph capabilities
 2. Add WebSocket support for real-time agent communication
-3. Enhance synthetic data generation with more realistic scenarios
-4. Add authentication and authorization
-5. Implement rate limiting and request validation
+3. Add authentication and authorization
+4. Implement rate limiting and request validation
+5. Enhance scenario visualization tools
 
-### Medium-term Goals (v0.4.0)
-1. Add support for different KQML dialects
-2. Implement agent discovery and registration
-3. Add support for agent capabilities and ontologies
-4. Create visualization tools for agent interactions
-5. Implement message persistence and recovery
+### Medium-term Goals (v1.0.0)
+1. Implement agent discovery and registration
+2. Add support for agent capabilities and ontologies
+3. Create advanced visualization tools for agent interactions
+4. Implement message persistence and recovery
+5. Develop custom scenario development toolkit
 
-### Long-term Goals (v1.0.0)
+### Long-term Goals (v2.0.0)
 1. Distributed agent support
 2. Advanced analytics and reporting
 3. Integration with popular agent frameworks
-4. Machine learning for pattern recognition
+4. Machine learning for pattern recognition and simulation
 5. Scalable deployment architecture
+6. Customizable scenario builder with a visual interface
+7. Real-time scenario adaptation based on agent behaviors
 
-## Immediate Priorities (v0.2.3)
-1. **Real-time Communication Layer**
+## Immediate Priorities (v0.9.0)
+1. **Scenario Analysis Tools**
+   - Implement analytics for scenario outcomes
+   - Add comparative analysis between scenarios
+   - Create scenario parameter exploration tools
+   - Develop agent behavior pattern detection
+
+2. **Enhanced Scenario Generation**
+   - Add customizable scenario parameters
+   - Implement scenario template system
+   - Create hybrid scenarios combining multiple models
+   - Add real-time scenario adaptation
+
+3. **Real-time Communication Layer**
    - Implement WebSocket handler for live updates
    - Add subscription management for agents and frontend
    - Implement event broadcasting system
    - Add connection state management
 
-2. **Authentication & Security**
+4. **Authentication & Security**
    - Implement JWT-based authentication
    - Add role-based access control (RBAC)
    - Create agent authentication mechanism
    - Implement API key management
 
-3. **Enhanced Query Capabilities**
+5. **Enhanced Query Capabilities**
    - Add complex graph traversal endpoints
    - Implement pattern matching queries
    - Add temporal analysis capabilities
    - Create query optimization layer
 
-4. **Analytics & Monitoring**
-   - Implement network-wide statistics
-   - Add agent performance metrics
-   - Create interaction pattern analysis
-   - Add historical trend tracking
-
-5. **Frontend Support**
-   - Add specialized visualization endpoints
-   - Implement graph layout algorithms
-   - Add node clustering capabilities
-   - Create edge bundling support
-
 ## New Components to Implement
 
-1. **`websocket_handler.py`**
+1. **`scenario_analyzer.py`**
+   - Scenario outcome analysis
+   - Agent behavior pattern detection
+   - Comparative scenario metrics
+   - Parameter sensitivity analysis
+
+2. **`scenario_builder.py`**
+   - Custom scenario definition
+   - Scenario template management
+   - Parameter configuration system
+   - Hybrid scenario composition
+
+3. **`websocket_handler.py`**
    - Real-time client connections
    - Event broadcasting system
    - Subscription management
    - Connection state handling
 
-2. **`auth_middleware.py`**
+4. **`auth_middleware.py`**
    - Request authentication
    - Token validation
    - Permission management
    - API key handling
 
-3. **`schema_validator.py`**
-   - KQML message validation
-   - Query parameter validation
-   - Agent registration validation
-   - Request/response schemas
-
-4. **`analytics_service.py`**
+5. **`analytics_service.py`**
    - Network metrics calculation
    - Interaction pattern analysis
    - Agent statistics generation
    - Performance monitoring
-
-5. **`api_documentation.py`**
-   - OpenAPI specifications
-   - Endpoint documentation
-   - Schema definitions
-   - Usage examples
 
 ## Performance Optimizations
 1. Implement caching layer for frequent queries
@@ -171,9 +181,9 @@ The project aims to build a multi-agent knowledge system where agents exchange K
 ## Architecture Decisions
 
 ### Database
-- Using Neo4j for graph-based storage of agent interactions
-- Implementing connection pooling for better performance
-- Maintaining separate test database
+- Using ArangoDB for graph-based storage of agent interactions
+- Implementing connection pooling with retry logic for better reliability
+- Maintaining separate test database with automated cleanup
 
 ### API Design
 - RESTful endpoints for basic operations
@@ -201,10 +211,15 @@ The project aims to build a multi-agent knowledge system where agents exchange K
 5. Backup and recovery procedures
 
 ## Risks & Considerations
-- Ensure LLM performance and efficient Docker deployment.
-- Maintain data consistency and scalability in Neo4j.
-- Prepare for future iterations requiring additional features like embedding search.
+- Ensure scenario models accurately represent the intended dynamics.
+- Maintain data consistency and scalability in ArangoDB.
+- Balance complexity of scenario models with performance requirements.
+- Consider computational resource requirements for large-scale scenario simulations.
+- Plan for extensibility to allow users to define custom scenarios.
 
 ## Next Steps
-- Complete MVP feature development and integration testing.
-- Update documentation as necessary during project evolution.
+- Enhance scenario models with additional parameters and agent behaviors.
+- Develop visualization tools specific to each scenario type.
+- Implement scenario analysis framework for outcome evaluation.
+- Create documentation and examples for each scenario model.
+- Build a scenario parameter exploration interface.

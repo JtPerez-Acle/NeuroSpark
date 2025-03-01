@@ -1,36 +1,189 @@
-"""Data generator module for creating synthetic agent interactions."""
-from datetime import datetime, timezone
-import random
-import uuid
-from typing import Dict, List, Any, Optional, Union
-from abc import ABC, abstractmethod
+# Synthetic Data Generation Enhancement Plan
 
-from app.kqml_handler import generate_synthetic_interaction
+## Overview
 
-class ScenarioGenerator(ABC):
+This document outlines the plan for enhancing the synthetic data generation capabilities of the KQML Parser Backend to support four distinct simulation scenarios:
+
+1. **Prisoners' Dilemma (PD)**
+2. **Predator/Prey Dynamics (PP)**
+3. **Pursuer/Evader (PE) Dynamics**
+4. **Search and Rescue (S&R)**
+
+Each scenario models different agent interaction patterns that can be used to study complex systems such as cooperation dynamics, information propagation, crime dynamics, and knowledge transfer.
+
+## Simulation Scenarios
+
+### 1. Prisoners' Dilemma (PD)
+- **Purpose**: Study cooperation and defection effects on environmental resource management
+- **Application**: Identify strategies to avoid tragedy of the commons
+- **Dynamics**: Self-aware agents negotiate and cooperate to establish collective intelligence for resource management
+- **Key Interactions**: Cooperation vs. defection with scoring matrix
+
+### 2. Predator/Prey Dynamics (PP)
+- **Purpose**: Analyze dispersion of fake vs. factual news
+- **Application**: Devise strategies against misinformation
+- **Dynamics**: Information spreading within a network of aware agents with memory
+- **Key Interactions**: Information propagation with credibility and susceptibility factors
+
+### 3. Pursuer/Evader (PE) Dynamics
+- **Purpose**: Study crime dynamics in complex urban scenarios
+- **Application**: Develop strategies to reduce criminality 
+- **Dynamics**: Strategies employed by self-aware pursuers and evaders
+- **Key Interactions**: Evasion tactics, pursuit efficiency, environmental factors
+
+### 4. Search and Rescue (S&R)
+- **Purpose**: Study knowledge transfer between unrelated Agent-Based Simulations
+- **Application**: Improve search, identification and rescue operations
+- **Dynamics**: Agent navigation in complex environments with obstacles
+- **Key Interactions**: Searching, identifying, and rescuing hidden agents
+
+## Implementation Plan
+
+### 1. Modular Architecture
+
+We'll extend the existing DataGenerator class using a modular approach:
+
+```
+DataGenerator (Base Class)
+├── ScenarioGenerator (Interface)
+│   ├── PDScenarioGenerator (Prisoners' Dilemma)
+│   ├── PPScenarioGenerator (Predator/Prey)
+│   ├── PEScenarioGenerator (Pursuer/Evader)
+│   └── SARScenarioGenerator (Search and Rescue)
+```
+
+This approach will:
+- Keep the core DataGenerator functionality intact
+- Allow independent development of each scenario
+- Make maintenance easier
+- Provide a consistent interface for all scenarios
+
+### 2. Modified Class Structure
+
+```python
+class DataGenerator:
+    """Generate synthetic data for testing."""
+    
+    def __init__(self, scenario=None):
+        """Initialize with option to specify a scenario."""
+        # Original initialization
+        # ...
+        
+        self.scenario = scenario
+        self.scenario_generator = self._create_scenario_generator(scenario)
+    
+    def _create_scenario_generator(self, scenario):
+        """Create appropriate scenario generator."""
+        if scenario == "pd":
+            return PDScenarioGenerator()
+        elif scenario == "predator_prey":
+            return PPScenarioGenerator()
+        elif scenario == "pursuer_evader":
+            return PEScenarioGenerator()
+        elif scenario == "search_rescue":
+            return SARScenarioGenerator()
+        return None  # Default to standard generation
+    
+    # Original methods remain unchanged
+    # ...
+    
+    def generate_scenario_data(self, num_agents, num_interactions, **kwargs):
+        """Generate data for the selected scenario."""
+        if self.scenario_generator:
+            return self.scenario_generator.generate_data(num_agents, num_interactions, **kwargs)
+        else:
+            # Fall back to standard synthetic data generation
+            return self.generate_synthetic_data(num_agents, num_interactions)
+
+
+class ScenarioGenerator:
     """Base interface for scenario generators."""
     
-    @abstractmethod
-    def generate_data(self, num_agents: int, num_interactions: int, **kwargs) -> Dict[str, Any]:
+    def generate_data(self, num_agents, num_interactions, **kwargs):
         """Generate data for the scenario."""
-        pass
+        raise NotImplementedError("Subclasses must implement generate_data")
     
-    @abstractmethod
-    def create_agent(self, **kwargs) -> Dict[str, Any]:
+    def create_agent(self, **kwargs):
         """Create an agent for this scenario."""
-        pass
+        raise NotImplementedError("Subclasses must implement create_agent")
     
-    @abstractmethod
-    def generate_interaction(self, sender: Dict[str, Any], receiver: Dict[str, Any], **kwargs) -> Dict[str, Any]:
+    def generate_interaction(self, sender, receiver, **kwargs):
         """Generate an interaction between agents."""
-        pass
+        raise NotImplementedError("Subclasses must implement generate_interaction")
+```
 
+### 3. Scenario-Specific Implementations
 
+Each scenario will implement the following:
+
+1. **Custom agent types and roles**
+   - Define agent properties specific to the scenario
+   - Implement specialized behavior patterns
+
+2. **Specialized interaction modeling**
+   - Define interaction types and outcomes
+   - Implement scenario rules and dynamics
+   - Incorporate mathematical models for success/failure
+
+3. **Scenario state management**
+   - Track scenario-specific state (rounds, positions, etc.)
+   - Update agents based on interaction outcomes
+
+### 4. API Integration
+
+Extend the existing API to support scenario-based generation:
+
+```python
+@generate_router.post("/scenario",
+    response_model=Dict[str, Any],
+    summary="Generate Scenario-Based Data",
+    description="Generate synthetic data based on a specific simulation scenario."
+)
+async def generate_scenario_data(
+    request: Request,
+    scenario: str = Query(..., description="Scenario type (pd, predator_prey, pursuer_evader, search_rescue)"),
+    num_agents: int = Query(10, description="Number of agents to generate"),
+    num_interactions: int = Query(50, description="Number of interactions to generate"),
+    rounds: Optional[int] = Query(None, description="Number of rounds/time steps (scenario-specific)")
+) -> Dict[str, Any]:
+    """Generate synthetic data for a specific scenario."""
+    try:
+        db = get_db(request)
+        generator = DataGenerator(scenario)
+        
+        # Generate scenario-specific data
+        kwargs = {}
+        if rounds is not None:
+            kwargs["rounds"] = rounds
+            
+        data = generator.generate_scenario_data(num_agents, num_interactions, **kwargs)
+        
+        # Store agents and interactions
+        for agent in data["agents"]:
+            await db.store_agent(agent)
+        
+        for interaction in data["interactions"]:
+            await db.store_interaction(interaction)
+        
+        return {
+            "status": "success",
+            "scenario": scenario,
+            "data": data
+        }
+    except Exception as e:
+        logger.error(f"Error generating scenario data: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+```
+
+## Implementation Details by Scenario
+
+### 1. Prisoners' Dilemma Implementation
+
+```python
 class PDScenarioGenerator(ScenarioGenerator):
     """Prisoners' Dilemma scenario generator."""
     
     def __init__(self):
-        """Initialize PDScenarioGenerator."""
         self.agent_roles = ["cooperator", "defector", "tit_for_tat", "random"]
         self.payoff_matrix = {
             ("cooperate", "cooperate"): (3, 3),  # Both cooperate: mutual benefit
@@ -39,7 +192,7 @@ class PDScenarioGenerator(ScenarioGenerator):
             ("defect", "defect"): (1, 1)         # Both defect: mutual punishment
         }
     
-    def create_agent(self, role: Optional[str] = None) -> Dict[str, Any]:
+    def create_agent(self, role=None):
         """Create a PD agent."""
         role = role or random.choice(self.agent_roles)
         
@@ -55,8 +208,7 @@ class PDScenarioGenerator(ScenarioGenerator):
         
         return agent
     
-    def generate_interaction(self, sender: Dict[str, Any], receiver: Dict[str, Any], 
-                            round_num: int = 1) -> Dict[str, Any]:
+    def generate_interaction(self, sender, receiver, round_num=1):
         """Generate a PD interaction."""
         # Determine decisions based on strategies
         sender_decision = self._get_decision(sender, receiver)
@@ -88,7 +240,7 @@ class PDScenarioGenerator(ScenarioGenerator):
         
         return interaction
     
-    def _get_decision(self, agent: Dict[str, Any], opponent: Dict[str, Any]) -> str:
+    def _get_decision(self, agent, opponent):
         """Determine an agent's decision based on strategy."""
         strategy = agent["strategy"]
         
@@ -105,7 +257,7 @@ class PDScenarioGenerator(ScenarioGenerator):
         else:  # random
             return random.choice(["cooperate", "defect"])
     
-    def generate_data(self, num_agents: int, num_interactions: int, rounds: int = 10, **kwargs) -> Dict[str, Any]:
+    def generate_data(self, num_agents, num_interactions, rounds=10):
         """Generate PD scenario data."""
         # Create agents
         agents = [self.create_agent() for _ in range(num_agents)]
@@ -116,7 +268,7 @@ class PDScenarioGenerator(ScenarioGenerator):
         # Generate interactions through rounds of play
         interactions = []
         for round_num in range(1, rounds + 1):
-            # Each agent plays against other agents
+            # Each agent plays against every other agent once per round
             for i in range(num_agents):
                 for j in range(i + 1, num_agents):
                     sender = agents[i]
@@ -127,11 +279,6 @@ class PDScenarioGenerator(ScenarioGenerator):
                     interactions.append(interaction)
                     
                     # In a real implementation, we would update agent histories here
-                    
-            # Limit to requested number of interactions if specified
-            if len(interactions) >= num_interactions:
-                interactions = interactions[:num_interactions]
-                break
         
         return {
             "agents": agents,
@@ -139,19 +286,23 @@ class PDScenarioGenerator(ScenarioGenerator):
             "run_id": run_id,
             "scenario": "prisoners_dilemma"
         }
+```
 
+### 2. Predator/Prey Implementation
 
+The Predator/Prey scenario will focus on information diffusion dynamics, modeling factual vs. fake news propagation:
+
+```python
 class PPScenarioGenerator(ScenarioGenerator):
     """Predator/Prey scenario generator."""
     
     def __init__(self):
-        """Initialize PPScenarioGenerator."""
         self.agent_types = ["predator", "prey"]
         self.predator_roles = ["misinformation", "disinformation", "propaganda"]
         self.prey_roles = ["factchecker", "skeptic", "vulnerable"]
         self.interaction_types = ["share", "consume", "verify", "debunk", "amplify"]
     
-    def create_agent(self, agent_type: Optional[str] = None, role: Optional[str] = None) -> Dict[str, Any]:
+    def create_agent(self, agent_type=None, role=None):
         """Create a Predator/Prey agent."""
         if not agent_type:
             agent_type = random.choice(self.agent_types)
@@ -168,23 +319,23 @@ class PPScenarioGenerator(ScenarioGenerator):
             "type": agent_type,
             "role": role,
             "created_at": datetime.now(timezone.utc).isoformat(),
-            "credibility": round(random.uniform(0.1, 0.9), 2),
-            "influence": round(random.uniform(0.2, 0.8), 2),
+            "credibility": random.uniform(0.1, 0.9),
+            "influence": random.uniform(0.2, 0.8),
             "network": [],
             "information": []
         }
         
         # Type-specific properties
         if agent_type == "predator":
-            agent["virality_factor"] = round(random.uniform(0.5, 1.0), 2)
-            agent["concealment"] = round(random.uniform(0.3, 0.9), 2)
+            agent["virality_factor"] = random.uniform(0.5, 1.0)
+            agent["concealment"] = random.uniform(0.3, 0.9)
         else:  # prey
-            agent["verification_ability"] = round(random.uniform(0.2, 0.9), 2)
-            agent["susceptibility"] = round(random.uniform(0.1, 0.8), 2)
+            agent["verification_ability"] = random.uniform(0.2, 0.9)
+            agent["susceptibility"] = random.uniform(0.1, 0.8)
         
         return agent
     
-    def generate_interaction(self, sender: Dict[str, Any], receiver: Dict[str, Any]) -> Dict[str, Any]:
+    def generate_interaction(self, sender, receiver):
         """Generate a Predator/Prey interaction."""
         # Determine interaction type based on agent types
         if sender["type"] == "predator":
@@ -196,16 +347,16 @@ class PPScenarioGenerator(ScenarioGenerator):
             # Generate misinformation content
             info_id = str(uuid.uuid4())[:8]
             info_type = sender["role"]
-            credibility = sender["credibility"] * (1 - receiver.get("verification_ability", 0.5))
+            credibility = sender["credibility"] * (1 - receiver["verification_ability"])
             topic = random.choice(["politics", "health", "science", "celebrity", "finance"])
             
             message = f"{sender['role']} {info_id} shared with {receiver['role']} on {topic} topic"
-            success = random.random() < (sender["influence"] * receiver.get("susceptibility", 0.5))
+            success = random.random() < (sender["influence"] * receiver["susceptibility"])
             
         else:  # prey as sender
             if sender["role"] == "factchecker":
                 interaction_type = "debunk"
-                credibility = sender["credibility"] * (1 + sender.get("verification_ability", 0.5))
+                credibility = sender["credibility"] * (1 + sender["verification_ability"])
             elif sender["role"] == "skeptic":
                 interaction_type = "verify"
                 credibility = sender["credibility"]
@@ -241,7 +392,7 @@ class PPScenarioGenerator(ScenarioGenerator):
         
         return interaction
     
-    def generate_data(self, num_agents: int, num_interactions: int, **kwargs) -> Dict[str, Any]:
+    def generate_data(self, num_agents, num_interactions, **kwargs):
         """Generate Predator/Prey scenario data."""
         # Determine number of each type
         num_predators = max(1, num_agents // 3)
@@ -281,19 +432,23 @@ class PPScenarioGenerator(ScenarioGenerator):
             "run_id": run_id,
             "scenario": "predator_prey"
         }
+```
 
+### 3. Pursuer/Evader Implementation
 
+The Pursuer/Evader scenario will model crime dynamics in urban environments:
+
+```python
 class PEScenarioGenerator(ScenarioGenerator):
     """Pursuer/Evader scenario generator."""
     
     def __init__(self):
-        """Initialize PEScenarioGenerator."""
         self.agent_types = ["pursuer", "evader"]
         self.pursuer_roles = ["patrol", "detective", "response"]
         self.evader_roles = ["burglar", "vandal", "organized"]
         self.interaction_types = ["chase", "evade", "hide", "search", "capture", "escape"]
     
-    def create_agent(self, agent_type: Optional[str] = None, role: Optional[str] = None) -> Dict[str, Any]:
+    def create_agent(self, agent_type=None, role=None):
         """Create a Pursuer/Evader agent."""
         if not agent_type:
             agent_type = random.choice(self.agent_types)
@@ -328,8 +483,7 @@ class PEScenarioGenerator(ScenarioGenerator):
         
         return agent
     
-    def generate_interaction(self, sender: Dict[str, Any], receiver: Dict[str, Any], 
-                           time_step: int = 0) -> Dict[str, Any]:
+    def generate_interaction(self, sender, receiver, time_step=0):
         """Generate a Pursuer/Evader interaction."""
         # Calculate distance between agents
         distance = ((sender["position"]["x"] - receiver["position"]["x"])**2 + 
@@ -394,7 +548,7 @@ class PEScenarioGenerator(ScenarioGenerator):
         
         return interaction
     
-    def generate_data(self, num_agents: int, num_interactions: int, time_steps: int = 20, **kwargs) -> Dict[str, Any]:
+    def generate_data(self, num_agents, num_interactions, time_steps=20):
         """Generate Pursuer/Evader scenario data."""
         # Determine number of each type
         num_pursuers = max(1, num_agents // 3)
@@ -434,34 +588,31 @@ class PEScenarioGenerator(ScenarioGenerator):
                 interaction = self.generate_interaction(sender, receiver, t)
                 interaction["run_id"] = run_id
                 interactions.append(interaction)
-                
-                # Limit to requested number of interactions if specified
-                if len(interactions) >= num_interactions:
-                    break
-                    
-            if len(interactions) >= num_interactions:
-                break
         
         return {
             "agents": agents,
-            "interactions": interactions[:num_interactions],
+            "interactions": interactions,
             "run_id": run_id,
             "scenario": "pursuer_evader"
         }
+```
 
+### 4. Search and Rescue Implementation
 
+The Search and Rescue scenario will model knowledge transfer between agents in complex environments:
+
+```python
 class SARScenarioGenerator(ScenarioGenerator):
     """Search and Rescue scenario generator."""
     
     def __init__(self):
-        """Initialize SARScenarioGenerator."""
         self.agent_types = ["searcher", "coordinator", "victim"]
         self.searcher_roles = ["aerial", "ground", "technical"]
         self.coordinator_roles = ["command", "logistics", "communications"]
         self.victim_roles = ["injured", "trapped", "lost"]
         self.interaction_types = ["search", "locate", "coordinate", "extract", "communicate"]
     
-    def create_agent(self, agent_type: Optional[str] = None, role: Optional[str] = None) -> Dict[str, Any]:
+    def create_agent(self, agent_type=None, role=None):
         """Create a Search and Rescue agent."""
         if not agent_type:
             agent_type = random.choice(self.agent_types)
@@ -505,7 +656,7 @@ class SARScenarioGenerator(ScenarioGenerator):
         
         return agent
     
-    def generate_interaction(self, sender: Dict[str, Any], receiver: Dict[str, Any]) -> Dict[str, Any]:
+    def generate_interaction(self, sender, receiver):
         """Generate a Search and Rescue interaction."""
         # Calculate distance between agents
         distance = ((sender["position"]["x"] - receiver["position"]["x"])**2 + 
@@ -514,8 +665,8 @@ class SARScenarioGenerator(ScenarioGenerator):
         # Determine interaction type based on agent types
         if sender["type"] == "searcher" and receiver["type"] == "victim":
             # Check if victim is within search radius
-            if distance <= sender.get("search_radius", 10):
-                detection_probability = sender["knowledge_level"] * receiver.get("visibility", 0.5)
+            if distance <= sender["search_radius"]:
+                detection_probability = sender["knowledge_level"] * receiver["visibility"]
                 detected = random.random() < detection_probability
                 
                 if detected:
@@ -543,7 +694,7 @@ class SARScenarioGenerator(ScenarioGenerator):
         elif sender["type"] == "victim":
             if receiver["type"] == "searcher" and distance <= 15:
                 interaction_type = "signal"
-                success_probability = sender.get("visibility", 0.5) * (1 - sender.get("mobility", 0.5))
+                success_probability = sender["visibility"] * (1 - sender["mobility"])
                 success = random.random() < success_probability
                 message = f"{sender['role']} victim signaling to nearby {receiver['role']}"
             else:
@@ -568,13 +719,13 @@ class SARScenarioGenerator(ScenarioGenerator):
                 "distance": round(distance, 2),
                 "sender_position": sender["position"],
                 "receiver_position": receiver["position"],
-                "environment_complexity": round(random.uniform(0.3, 0.9), 2)
+                "environment_complexity": random.uniform(0.3, 0.9)
             }
         }
         
         return interaction
     
-    def generate_data(self, num_agents: int, num_interactions: int, **kwargs) -> Dict[str, Any]:
+    def generate_data(self, num_agents, num_interactions, **kwargs):
         """Generate Search and Rescue scenario data."""
         # Determine number of each type
         num_victims = max(1, num_agents // 5)
@@ -621,203 +772,28 @@ class SARScenarioGenerator(ScenarioGenerator):
             "run_id": run_id,
             "scenario": "search_rescue"
         }
+```
 
+## Next Steps
 
-class DataGenerator:
-    """Generate synthetic data for testing."""
-    
-    def __init__(self, scenario: Optional[str] = None):
-        """Initialize data generator with agent types and roles."""
-        # Original agent types and roles
-        self.agent_types = {
-            "sensor": ["temperature", "pressure", "humidity"],
-            "analyzer": ["pattern", "anomaly", "trend"],
-            "coordinator": ["system", "network", "process"],
-            "actuator": ["hvac", "valve", "switch"]
-        }
-        
-        self.interaction_types = {
-            "sensor": ["report", "notification", "update"],
-            "analyzer": ["query", "report", "alert"],
-            "coordinator": ["command", "request", "broadcast"],
-            "actuator": ["response", "update", "notification"]
-        }
-        
-        self.topics = {
-            "temperature": ["temperature_reading", "thermal_status", "heat_alert"],
-            "pressure": ["pressure_reading", "pressure_change", "valve_status"],
-            "humidity": ["humidity_level", "moisture_alert", "saturation_warning"],
-            "pattern": ["pattern_detection", "anomaly_identification", "trend_analysis"],
-            "anomaly": ["anomaly_detection", "outlier_report", "deviation_alert"],
-            "trend": ["trend_forecast", "pattern_evolution", "historical_analysis"],
-            "system": ["system_status", "resource_allocation", "performance_metrics"],
-            "network": ["network_traffic", "connectivity_status", "bandwidth_utilization"],
-            "process": ["process_monitoring", "task_allocation", "execution_status"],
-            "hvac": ["temperature_control", "fan_speed", "operating_mode"],
-            "valve": ["valve_position", "flow_rate", "pressure_regulation"],
-            "switch": ["switch_status", "power_state", "circuit_control"]
-        }
-        
-        # Set up scenario generator if provided
-        self.scenario = scenario
-        self.scenario_generator = self._create_scenario_generator(scenario)
-    
-    def _create_scenario_generator(self, scenario: Optional[str]) -> Optional[ScenarioGenerator]:
-        """Create appropriate scenario generator."""
-        if scenario == "pd":
-            return PDScenarioGenerator()
-        elif scenario == "predator_prey":
-            return PPScenarioGenerator()
-        elif scenario == "pursuer_evader":
-            return PEScenarioGenerator()
-        elif scenario == "search_rescue":
-            return SARScenarioGenerator()
-        return None  # Default to standard generation
-        
-    def random_int(self, min_val: int, max_val: int) -> int:
-        """Generate a random integer between min and max values."""
-        return random.randint(min_val, max_val)
-        
-    def random_float(self, min_val: float, max_val: float) -> float:
-        """Generate a random float between min and max values."""
-        return min_val + random.random() * (max_val - min_val)
+1. **Implementation Phases**:
+   - Phase 1: Define the interfaces and base classes
+   - Phase 2: Implement the Prisoners' Dilemma scenario
+   - Phase 3: Add the remaining scenarios
+   - Phase 4: Integrate with the API
 
-    def create_agent_profile(self, agent_type: Optional[str] = None, role: Optional[str] = None) -> Dict[str, Any]:
-        """Create a single agent profile."""
-        if not agent_type:
-            agent_type = random.choice(list(self.agent_types.keys()))
-        if not role:
-            role = random.choice(self.agent_types[agent_type])
-            
-        return {
-            "id": str(uuid.uuid4()).replace('-', '_'),
-            "type": agent_type,
-            "role": role,
-            "created_at": datetime.now(timezone.utc).isoformat()
-        }
+2. **Testing**:
+   - Unit tests for each scenario generator
+   - Integration tests for the API endpoints
+   - Validation of generated data against scenario requirements
 
-    def create_agent_profiles(self, num_agents: int) -> List[Dict[str, Any]]:
-        """Create multiple agent profiles."""
-        return [self.create_agent_profile() for _ in range(num_agents)]
+3. **Documentation**:
+   - Update API documentation
+   - Add usage examples for each scenario
+   - Document the data structures for each scenario
 
-    def generate_content_by_type(self, agent_type: str, role: str) -> Dict[str, Any]:
-        """Generate content based on agent type and role."""
-        if agent_type == "sensor":
-            reading = round(random.uniform(0, 100), 2)
-            return {
-                "reading": reading,
-                role: reading,
-                "celsius": reading if role == "temperature" else None,
-                "timestamp": datetime.now(timezone.utc).isoformat()
-            }
-        elif agent_type == "analyzer":
-            return {
-                "analysis": f"{role}_analysis_{random.randint(1, 1000)}",
-                "status": random.choice(["normal", "warning", "critical"]),
-                "confidence": round(random.uniform(0, 1), 2),
-                "timestamp": datetime.now(timezone.utc).isoformat()
-            }
-        elif agent_type == "coordinator":
-            return {
-                "command": f"{role}_command_{random.randint(1, 1000)}",
-                "action": random.choice(["start", "stop", "update"]),
-                "priority": random.choice(["low", "medium", "high"]),
-                "timestamp": datetime.now(timezone.utc).isoformat()
-            }
-        elif agent_type == "actuator":
-            return {
-                "status": random.choice(["active", "inactive", "error"]),
-                "action_status": random.choice(["success", "pending", "failed"]),
-                "timestamp": datetime.now(timezone.utc).isoformat()
-            }
-        else:
-            raise ValueError(f"Unknown agent type: {agent_type}")
-
-    def get_interaction_type_by_agent(self, agent_type: str) -> str:
-        """Get appropriate interaction type for agent type."""
-        return random.choice(self.interaction_types[agent_type])
-        
-    def get_topic_by_role(self, role: str) -> str:
-        """Get appropriate topic for agent role."""
-        if role in self.topics:
-            return random.choice(self.topics[role])
-        else:
-            # Default topics if role not found
-            return random.choice(["status_update", "general_message", "system_notification"])
-
-    def generate_interaction(self, sender: Dict[str, Any], receiver: Dict[str, Any], run_id: Optional[str] = None) -> Dict[str, Any]:
-        """Generate an interaction between two agents."""
-        interaction_type = self.get_interaction_type_by_agent(sender["type"])
-        topic = self.get_topic_by_role(sender["role"])
-        content = self.generate_content_by_type(sender["type"], sender["role"])
-        
-        # Convert content dict to a readable message
-        if sender["type"] == "sensor":
-            message = f"Reading: {content.get('reading')} {sender['role']}"
-        elif sender["type"] == "analyzer":
-            message = f"Analysis: {content.get('status')} with {content.get('confidence', 0)*100:.0f}% confidence"
-        elif sender["type"] == "coordinator":
-            message = f"Command: {content.get('action')} with {content.get('priority', 'normal')} priority"
-        elif sender["type"] == "actuator":
-            message = f"Status: {content.get('status')} - Action {content.get('action_status', 'unknown')}"
-        else:
-            message = str(content)
-        
-        # Set priority based on content if available
-        priority = None
-        if "priority" in content:
-            priority_map = {"low": 1, "medium": 3, "high": 5}
-            priority = priority_map.get(content["priority"], 3)
-        
-        # Create interaction data using our new function
-        interaction_data = generate_synthetic_interaction(
-            sender_id=sender["id"],
-            receiver_id=receiver["id"],
-            topic=topic,
-            message=message,
-            interaction_type=interaction_type,
-            priority=priority,
-            run_id=run_id
-        )
-        
-        return interaction_data
-
-    def generate_synthetic_data(self, num_agents: int, num_interactions: int) -> Dict[str, Any]:
-        """Generate synthetic dataset with agents and interactions."""
-        # Create agents
-        agents = self.create_agent_profiles(num_agents)
-        
-        # Create a run ID for all interactions
-        run_id = str(uuid.uuid4()).replace('-', '_')
-        
-        # Generate interactions
-        interactions = []
-        for _ in range(num_interactions):
-            sender, receiver = random.sample(agents, 2)
-            interaction = self.generate_interaction(sender, receiver, run_id=run_id)
-            interactions.append(interaction)
-        
-        return {
-            "agents": agents,
-            "interactions": interactions,
-            "run_id": run_id
-        }
-
-    def generate_synthetic_interaction_data(self) -> Dict[str, Any]:
-        """Generate a synthetic agent interaction."""
-        # Create two random agents
-        sender = self.create_agent_profile()
-        receiver = self.create_agent_profile()
-        
-        # Generate interaction between them
-        interaction = self.generate_interaction(sender, receiver)
-        
-        return interaction
-        
-    def generate_scenario_data(self, num_agents: int, num_interactions: int, **kwargs) -> Dict[str, Any]:
-        """Generate data for the selected scenario."""
-        if self.scenario_generator:
-            return self.scenario_generator.generate_data(num_agents, num_interactions, **kwargs)
-        else:
-            # Fall back to standard synthetic data generation
-            return self.generate_synthetic_data(num_agents, num_interactions)
+4. **Future Enhancements**:
+   - Parameter tuning for more realistic simulations
+   - Visualization tools for scenario outcomes
+   - Advanced analysis of interaction patterns
+   - Addition of more complex scenarios
