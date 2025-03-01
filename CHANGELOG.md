@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.2] - 2025-03-01
+
+### Added
+- Advanced network analysis capabilities with NetworkX integration:
+  - Graph metrics calculation (density, diameter, clustering, etc.)
+  - Node centrality measures (degree, betweenness, closeness, eigenvector, PageRank)
+  - Community detection algorithms (Louvain, Label Propagation, Girvan-Newman)
+  - Temporal network analysis for evolution tracking
+  - Custom force-directed layouts for visualizations (spring, spectral, circular, etc.)
+- New `/analysis` endpoints for network analysis functionality:
+  - `/analysis/metrics` for basic graph metrics
+  - `/analysis/centrality` for node centrality measures
+  - `/analysis/communities` for community detection
+  - `/analysis/layout` for graph layout coordinates
+  - `/analysis/temporal` for temporal analysis
+  - `/analysis/visualization` for enhanced visualization data
+- Comprehensive error handling with graceful fallbacks for graph algorithms
+
+## [0.8.1] - 2025-03-01
+
+### Fixed
+- Fixed scenario generation endpoint that was returning 404 errors
+- Added debug logging for scenario generation process
+- Fixed CORS issues with API proxy configuration
+- Improved stability of Docker deployment for development environment
+
 ## [0.8.0] - 2025-03-01
 
 ### Added

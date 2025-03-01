@@ -16,6 +16,19 @@ And the ReDoc alternative documentation at:
 http://localhost:8000/redoc
 ```
 
+## New in Version 0.8.2: Network Analysis
+
+The KQML Parser backend now includes comprehensive graph analysis features through NetworkX integration. These features are available through the `/analysis/*` endpoints:
+
+- **Graph Metrics Analysis**: Calculate density, connectivity, clustering, and other network metrics
+- **Centrality Measures**: Identify important nodes using degree, betweenness, closeness, eigenvector centrality
+- **Community Detection**: Find natural clusters of agents using algorithms like Louvain and Label Propagation
+- **Layout Generation**: Generate optimal node positions for visualization
+- **Temporal Analysis**: Track how network metrics change over time
+- **Enhanced Visualization**: Combine layout, metrics, and community detection for rich visualizations
+
+These endpoints are fully documented in Swagger UI and can be used to gain deeper insights into agent interaction patterns.
+
 ## Key Models Documentation
 
 ### AgentInteraction Model
@@ -190,6 +203,41 @@ curl -X 'POST' \
 ```bash
 curl -X 'GET' \
   'http://localhost:8000/graph'
+```
+
+### Get Graph Metrics Analysis
+
+```bash
+curl -X 'GET' \
+  'http://localhost:8000/analysis/metrics?directed=true'
+```
+
+### Get Node Centrality Measures
+
+```bash
+curl -X 'GET' \
+  'http://localhost:8000/analysis/centrality?top_n=5'
+```
+
+### Detect Communities in Graph
+
+```bash
+curl -X 'GET' \
+  'http://localhost:8000/analysis/communities?algorithm=louvain&directed=false'
+```
+
+### Get Graph Layout for Visualization
+
+```bash
+curl -X 'GET' \
+  'http://localhost:8000/analysis/layout?layout=spring&dimensions=2'
+```
+
+### Get Enhanced Visualization Data
+
+```bash
+curl -X 'GET' \
+  'http://localhost:8000/analysis/visualization?include_communities=true&include_metrics=true'
 ```
 
 ### Clear Database

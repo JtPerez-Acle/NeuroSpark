@@ -1,24 +1,39 @@
-# Agent Interaction Backend v0.7.1
+# Agent Interaction Backend v0.8.2
 
-A Multi-Agent Graph Intelligence System for processing, storing, and analyzing agent interactions.
+A Multi-Agent Graph Intelligence System for processing, storing, and analyzing agent interactions with advanced network analysis capabilities.
 
-## Features
+## 🌟 New in v0.8.2: NetworkX Integration
+
+This release introduces comprehensive graph analysis through NetworkX integration:
+
+- **Advanced Graph Metrics**: Density, diameter, clustering coefficient, connectivity
+- **Node Centrality Analysis**: Identify key agents through degree, betweenness, closeness, eigenvector centrality, and PageRank
+- **Community Detection**: Discover agent clusters using Louvain, Label Propagation, and other algorithms
+- **Temporal Network Analysis**: Track how interaction patterns evolve over time
+- **Custom Force-Directed Layouts**: Generate optimal node positions for visualizations
+- **Enhanced API Endpoints**: `/analysis/*` endpoints for all network analysis features
+
+## Core Features
 
 - FastAPI-based REST API with WebSocket support for real-time updates
 - ArangoDB graph database for persistent storage of agent interactions
 - Enhanced Agent Interaction model with rich metadata
 - Consistent REST API endpoints for interactions, agents, and data generation
-- Synthetic data generation for testing and demonstration
+- Multiple scenario-based synthetic data generators:
+  - Predator/Prey (information propagation)
+  - Prisoner's Dilemma (cooperation dynamics)
+  - Pursuer/Evader (spatial dynamics)
+  - Search and Rescue (coordination patterns)
 - Interactive API documentation with Swagger UI
 - Real-time agent interaction monitoring via WebSocket
-- Comprehensive test suite with ArangoDB integration testing (57 tests)
+- Comprehensive test suite with 75+ tests and >50% code coverage
 - Extensive logging and monitoring with Prometheus/Grafana integration
 - Docker containers with flexible deployment options:
   - Production mode with full monitoring stack
   - Development mode with minimal components
   - Automated testing environment with containerized tests
 
-## System Overview
+## System Architecture
 
 ```mermaid
 graph TD
@@ -27,6 +42,15 @@ graph TD
         BE[Backend API<br>FastAPI + Python]
         WS[WebSocket Server]
         DG[Data Generator]
+        
+        subgraph "Analysis Components" 
+            NX[NetworkX Integration]
+            GM[Graph Metrics]
+            CD[Community Detection]
+            CN[Centrality Analysis]
+            TM[Temporal Metrics]
+            VL[Visualization Layouts]
+        end
     end
     
     subgraph "Database"
@@ -46,6 +70,16 @@ graph TD
     BE -->|Store/Query| DB
     BE -->|Generate Test Data| DG
     DG -->|Populate| DB
+    
+    %% NetworkX Integration
+    BE <-->|Analyze| NX
+    NX -->|Calculate| GM
+    NX -->|Detect| CD
+    NX -->|Measure| CN
+    NX -->|Track| TM
+    NX -->|Generate| VL
+    
+    %% Monitoring
     BE -->|Metrics| PR
     PR -->|Visualize| GR
     BE -->|Log Events| LOG
@@ -54,23 +88,27 @@ graph TD
     classDef backend fill:#66bb6a,stroke:#2e7d32,color:#fff
     classDef database fill:#ff7043,stroke:#e64a19,color:#fff
     classDef monitoring fill:#ab47bc,stroke:#7b1fa2,color:#fff
+    classDef analysis fill:#26c6da,stroke:#00838f,color:#fff
     classDef user fill:#78909c,stroke:#37474f,color:#fff
     
     class FE frontend
     class BE,WS,DG backend
     class DB database
     class PR,GR,LOG monitoring
+    class NX,GM,CD,CN,TM,VL analysis
     class US user
 ```
 
-## Interaction Model
+## Domain Model
 
 ```mermaid
 classDiagram
+    %% Core Entities
     class Agent {
         +string id
         +string name
         +string type
+        +string role
         +dict metadata
         +datetime created_at
         +create()
@@ -83,12 +121,14 @@ classDiagram
         +string sender_id
         +string receiver_id
         +string topic
+        +string message
+        +string interaction_type
         +int priority (1-5)
         +float sentiment (-1 to 1)
-        +string content
         +dict metadata
         +datetime timestamp
         +int duration_ms
+        +string run_id
         +store()
         +update()
         +query()
@@ -105,12 +145,61 @@ classDiagram
         +get_interactions()
     }
     
+    %% Analysis Components
+    class NetworkAnalysis {
+        +List~Dict~ nodes
+        +List~Dict~ links
+        +bool directed
+        +get_basic_metrics()
+        +get_centrality_metrics()
+        +detect_communities()
+        +get_layout_positions()
+        +get_temporal_metrics()
+        +get_visualization_data()
+    }
+    
+    class GraphMetrics {
+        +int node_count
+        +int edge_count
+        +float density
+        +float average_degree
+        +bool is_connected
+        +int components
+        +float clustering
+        +int diameter
+    }
+    
+    class CentralityMeasures {
+        +Dict degree_centrality
+        +Dict betweenness_centrality
+        +Dict closeness_centrality
+        +Dict eigenvector_centrality
+        +Dict pagerank
+    }
+    
+    class Community {
+        +int community_count
+        +List~List~ communities
+        +float modularity
+        +List community_sizes
+    }
+    
+    %% Relationships
     Agent "1" -- "many" AgentInteraction : sends
     Agent "1" -- "many" AgentInteraction : receives
     Run "1" -- "many" AgentInteraction : contains
+    Agent "many" -- "many" Run : participates
+    
+    NetworkAnalysis -- GraphMetrics : calculates
+    NetworkAnalysis -- CentralityMeasures : measures
+    NetworkAnalysis -- Community : detects
+    NetworkAnalysis "1" -- "many" Agent : analyzes
+    NetworkAnalysis "1" -- "many" AgentInteraction : analyzes
 ```
 
-## Data Flow Process
+## Data Flow and Analytics Processes
+
+### Core Interaction Flow
 
 ```mermaid
 sequenceDiagram
@@ -121,7 +210,7 @@ sequenceDiagram
     participant WS as WebSocket Server
     
     Client->>API: POST /interactions
-    Note over API,Handler: Interaction contains:<br>- sender/receiver<br>- topic<br>- priority<br>- sentiment<br>- content<br>- metadata
+    Note over API,Handler: Interaction contains:<br>- sender/receiver<br>- topic<br>- interaction_type<br>- priority<br>- sentiment<br>- message<br>- metadata
     
     API->>Handler: Process interaction
     Handler->>DB: Store interaction
@@ -142,6 +231,101 @@ sequenceDiagram
     DB->>WS: New interaction created
     WS-->>Client: Push notification
 ```
+
+### Network Analysis Flow
+
+```mermaid
+sequenceDiagram
+    participant Client as Client Application
+    participant API as FastAPI Backend
+    participant DB as ArangoDB Database
+    participant NetworkX as NetworkX Analyzer
+    
+    Client->>API: GET /analysis/metrics
+    API->>DB: Fetch agents and interactions
+    DB-->>API: Return graph data
+    API->>NetworkX: Calculate graph metrics
+    Note over NetworkX: Process metrics:<br>- density<br>- connectivity<br>- clustering<br>- diameter<br>- etc.
+    NetworkX-->>API: Return metrics
+    API-->>Client: Return processed metrics
+    
+    Client->>API: GET /analysis/centrality
+    API->>DB: Fetch graph data
+    DB-->>API: Return nodes and links
+    API->>NetworkX: Calculate centrality metrics
+    Note over NetworkX: Process centrality:<br>- degree<br>- betweenness<br>- closeness<br>- eigenvector<br>- PageRank
+    NetworkX-->>API: Return centrality values
+    API-->>Client: Return centrality by node
+    
+    Client->>API: GET /analysis/communities
+    API->>DB: Fetch graph data
+    DB-->>API: Return nodes and links
+    API->>NetworkX: Detect communities
+    Note over NetworkX: Apply algorithms:<br>- Louvain<br>- Label Propagation<br>- Greedy Modularity
+    NetworkX-->>API: Return community assignments
+    API-->>Client: Return community data
+    
+    Client->>API: GET /analysis/visualization
+    API->>DB: Fetch graph data
+    DB-->>API: Return nodes and links
+    API->>NetworkX: Generate comprehensive data
+    Note over NetworkX: Combine:<br>- layout positions<br>- communities<br>- centrality metrics
+    NetworkX-->>API: Return enhanced data
+    API-->>Client: Return visualization data
+```
+
+## API Endpoints
+
+### Core Endpoints
+
+- `/agents` - Create and query agents
+- `/agents/{agent_id}/interactions` - Get agent interactions
+- `/agents/{agent_id}/runs` - Get agent runs
+- `/interactions` - Create and query interactions
+- `/graph` - Get graph visualization data
+- `/network` - Get network data
+- `/network/query` - Query network with filters
+- `/query` - Natural language query interface
+
+### Data Generation Endpoints
+
+- `/generate/data` - Generate basic synthetic data
+- `/generate/scenario` - Generate scenario-based data:
+  - `scenario=predator_prey` - Information propagation simulation
+  - `scenario=pd` - Prisoner's Dilemma cooperation dynamics
+  - `scenario=pursuer_evader` - Spatial pursuit-evasion dynamics
+  - `scenario=search_rescue` - Team coordination scenario
+
+### Network Analysis Endpoints (New in v0.8.2)
+
+- `/analysis/metrics` - Get comprehensive graph metrics
+  - Node/edge counts, density, connectivity components
+  - Clustering coefficient, diameter, path lengths
+  
+- `/analysis/centrality` - Calculate node importance measures
+  - Degree centrality (in/out for directed graphs)
+  - Betweenness centrality (bridge nodes)
+  - Closeness centrality (proximity)
+  - Eigenvector centrality (connected to important nodes)
+  - PageRank (for directed graphs)
+  
+- `/analysis/communities` - Detect natural clusters
+  - Multiple algorithms: Louvain, Label Propagation, etc.
+  - Community sizes and modularity metrics
+  
+- `/analysis/layout` - Generate layout positions for visualization
+  - Various algorithms: Spring, Circular, Spectral, etc.
+  - 2D or 3D coordinate generation
+  
+- `/analysis/temporal` - Analyze network evolution over time
+  - Time windowed metrics calculations
+  - Temporal patterns detection
+  
+- `/analysis/visualization` - Get enhanced graph visualization data
+  - Combined layout, communities, and metrics
+  - Optimized for visualization libraries
+
+Access the full interactive API documentation at [`http://localhost:8000/docs`](http://localhost:8000/docs) when the server is running.
 
 ## Prerequisites
 
@@ -346,6 +530,14 @@ The Frontend will be available at:
 
 ### Graph Visualization
 - `GET /graph` - Get nodes and links for graph visualization
+
+### Network Analysis
+- `GET /analysis/metrics` - Get comprehensive graph metrics (density, clustering, etc.)
+- `GET /analysis/centrality` - Get node centrality measures (degree, betweenness, etc.)
+- `GET /analysis/communities` - Detect communities within the network
+- `GET /analysis/layout` - Generate layout coordinates for graph visualization
+- `GET /analysis/temporal` - Analyze graph metrics over time periods
+- `GET /analysis/visualization` - Get comprehensive visualization data with metrics
 
 ### Query Operations
 - `POST /query` - Execute natural language queries on interactions

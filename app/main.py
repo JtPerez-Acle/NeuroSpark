@@ -38,6 +38,7 @@ manager = ConnectionManager()
 # Import new routers
 from .graph_routes import graph_router
 from .query_routes import query_router
+from .analysis_routes import analysis_router
 
 # Add routers
 app.include_router(agent_router, prefix="/agents", tags=["agents"])
@@ -48,6 +49,7 @@ app.include_router(interactions_router, prefix="/interactions", tags=["interacti
 app.include_router(admin_router, prefix="/admin", tags=["admin"])
 app.include_router(graph_router, prefix="/graph", tags=["graph"])
 app.include_router(query_router, prefix="/query", tags=["query"])
+app.include_router(analysis_router, prefix="/analysis", tags=["analysis"])
 
 # Initialize database
 @app.on_event("startup")
