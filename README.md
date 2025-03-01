@@ -335,6 +335,7 @@ The Frontend will be available at:
 ### Agent Management
 - `POST /agents` - Create a new agent
 - `GET /agents` - Get all agents
+- `POST /agents/interaction` - Store an agent interaction
 - `GET /agents/{agent_id}/interactions` - Get all interactions for a specific agent
 - `GET /agents/{agent_id}/runs` - Get all runs for a specific agent
 - `GET /agents/stats` - Get agent statistics
@@ -343,17 +344,30 @@ The Frontend will be available at:
 - `GET /network` - Get network graph data with optional filtering
 - `POST /network/query` - Query network graph with specific filters
 
+### Graph Visualization
+- `GET /graph` - Get nodes and links for graph visualization
+
+### Query Operations
+- `POST /query` - Execute natural language queries on interactions
+
 ### Data Generation
 - `POST /generate/data` - Generate synthetic agent and interaction data
-- `POST /generate/kqml` - Generate a synthetic agent interaction
+- `POST /generate/kqml` - Generate a synthetic KQML interaction
+- `GET /generate/interaction` - Generate a single random interaction without storing it
+
+### Database Operations
+- `DELETE /admin/database/clear` - Clear all data from the database
+- `POST /admin/database/clean` - Clean up orphaned nodes and invalid relationships
 
 ### Deprecated Endpoints (for backward compatibility)
-- `POST /agents/message` - Store an interaction (use `/interactions` instead)
+- `POST /agents/message` - Store an interaction (use `/agents/interaction` instead)
 - `POST /synthetic/data` - Generate synthetic data (use `/generate/data` instead)
 - `POST /synthetic/kqml` - Generate synthetic interactions (use `/generate/kqml` instead)
 
 ### WebSocket
 - `WebSocket /ws` - Real-time interaction updates
+
+For detailed API documentation with request/response examples, please refer to the [API_ENDPOINTS.md](./API_ENDPOINTS.md) file or visit the Swagger UI at http://localhost:8000/docs when the backend is running.
 
 ## Docker Deployment
 
