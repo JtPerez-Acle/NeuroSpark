@@ -398,6 +398,57 @@ Provides real-time updates for agent interactions and system events.
   - `422`: Invalid parameters
   - `500`: Server error
 
+#### Generate Scenario-Based Data
+- **Endpoint**: `POST /generate/scenario`
+- **Description**: Generate synthetic data based on specific simulation scenarios
+- **Request Body**:
+  ```json
+  {
+    "scenario": "string (pd, predator_prey, pursuer_evader, search_rescue)",
+    "numAgents": "integer",
+    "numInteractions": "integer",
+    "rounds": "integer (optional)"
+  }
+  ```
+- **Response**:
+  ```json
+  {
+    "status": "success",
+    "scenario": "string",
+    "data": {
+      "agents": [
+        {
+          "id": "string",
+          "type": "string",
+          "role": "string",
+          // Scenario-specific properties
+        }
+      ],
+      "interactions": [
+        {
+          "interaction_id": "string (UUID)",
+          "sender_id": "string",
+          "receiver_id": "string",
+          "topic": "string",
+          "message": "string",
+          "interaction_type": "string",
+          "timestamp": "string (ISO datetime)",
+          "run_id": "string (UUID)",
+          "metadata": {
+            "scenario": "string",
+            // Scenario-specific metadata
+          }
+        }
+      ],
+      "run_id": "string (UUID)",
+      "scenario": "string"
+    }
+  }
+  ```
+- **Error Codes**:
+  - `422`: Invalid parameters
+  - `500`: Server error
+
 #### Generate Synthetic Interaction
 - **Endpoint**: `GET /generate/interaction`
 - **Description**: Generate a single synthetic agent interaction
@@ -515,6 +566,16 @@ Provides real-time updates for agent interactions and system events.
 {
   "numAgents": "integer",
   "numInteractions": "integer"
+}
+```
+
+### ScenarioParams
+```json
+{
+  "scenario": "string (pd, predator_prey, pursuer_evader, search_rescue)",
+  "numAgents": "integer",
+  "numInteractions": "integer",
+  "rounds": "integer (optional)"
 }
 ```
 

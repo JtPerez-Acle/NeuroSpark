@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.0] - 2025-03-01
+
+### Added
+- Scenario-based synthetic data generation with four distinct simulation scenarios:
+  - Prisoners' Dilemma (pd) for studying cooperation dynamics
+  - Predator/Prey (predator_prey) for analyzing information propagation
+  - Pursuer/Evader (pursuer_evader) for modeling crime dynamics
+  - Search and Rescue (search_rescue) for knowledge transfer simulation
+- New `/generate/scenario` endpoint for creating scenario-specific data
+- Modular architecture for scenario generators with a common interface
+- Comprehensive test suite for all scenario generators
+- Updated API documentation with scenario generation examples
+
+### Changed
+- Enhanced `DataGenerator` class to support scenario-based generation
+- Improved test infrastructure for new scenario generators
+- Updated documentation to include scenario-based data generation
+
 ## [0.7.1] - 2025-02-27
 
 ### Added

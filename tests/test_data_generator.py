@@ -1,7 +1,13 @@
 """Tests for data generator module."""
 import pytest
 from datetime import datetime
-from app.data_generator import DataGenerator
+from unittest.mock import patch, MagicMock
+import sys
+import os
+
+# Mock the logging before importing the module
+with patch('app.monitoring.logging_config.setup_logging', MagicMock()):
+    from app.data_generator import DataGenerator, PDScenarioGenerator, PPScenarioGenerator, PEScenarioGenerator, SARScenarioGenerator
 
 class TestDataGenerator:
     """Test cases for DataGenerator class."""
@@ -123,3 +129,87 @@ class TestDataGenerator:
             assert "interaction_type" in interaction
             assert "timestamp" in interaction
             assert "metadata" in interaction
+            
+    def test_scenario_generator_init(self):
+        """Test initializing generator with a scenario."""
+        # Test each scenario type
+        generator_pd = DataGenerator(scenario="pd")
+        assert generator_pd.scenario == "pd"
+        assert generator_pd.scenario_generator is not None
+        
+        generator_pp = DataGenerator(scenario="predator_prey")
+        assert generator_pp.scenario == "predator_prey"
+        assert generator_pp.scenario_generator is not None
+        
+        generator_pe = DataGenerator(scenario="pursuer_evader")
+        assert generator_pe.scenario == "pursuer_evader"
+        assert generator_pe.scenario_generator is not None
+        
+        generator_sar = DataGenerator(scenario="search_rescue")
+        assert generator_sar.scenario == "search_rescue"
+        assert generator_sar.scenario_generator is not None
+        
+        # Test invalid scenario
+        generator_invalid = DataGenerator(scenario="invalid")
+        assert generator_invalid.scenario == "invalid"
+        assert generator_invalid.scenario_generator is None
+        
+    def test_generate_scenario_data(self):
+        """Test generating scenario-based data."""
+        # Test Prisoners' Dilemma scenario
+        generator = DataGenerator(scenario="pd")
+        data = generator.generate_scenario_data(5, 10, rounds=3)
+        
+        assert "agents" in data
+        assert "interactions" in data
+        assert "run_id" in data
+        assert "scenario" in data
+        assert data["scenario"] == "prisoners_dilemma"
+        assert len(data["agents"]) == 5
+        assert len(data["interactions"]) <= 10  # May be less due to round limits
+        
+        # Check agent structure
+        for agent in data["agents"]:
+            assert agent["type"] == "prisoner"
+            assert agent["role"] in ["cooperator", "defector", "tit_for_tat", "random"]
+            assert "strategy" in agent
+            assert "score" in agent
+            assert "history" in agent
+            
+        # Check interaction structure
+        for interaction in data["interactions"]:
+            assert interaction["interaction_type"] in ["cooperate", "defect"]
+            assert "metadata" in interaction
+            assert "scenario" in interaction["metadata"]
+            assert "round" in interaction["metadata"]
+            assert "sender_decision" in interaction["metadata"]
+            assert "receiver_decision" in interaction["metadata"]
+            
+    def test_scenario_generators(self):
+        """Test each scenario generator directly."""
+        # Test Prisoners' Dilemma scenario generator
+        pd_generator = PDScenarioGenerator()
+        pd_data = pd_generator.generate_data(3, 10, rounds=2)
+        assert len(pd_data["agents"]) == 3
+        assert pd_data["scenario"] == "prisoners_dilemma"
+        
+        # Test Predator/Prey scenario generator
+        pp_generator = PPScenarioGenerator()
+        pp_data = pp_generator.generate_data(9, 5)  # 3 predators, 6 prey
+        assert len(pp_data["agents"]) == 9
+        assert len(pp_data["interactions"]) == 5
+        assert pp_data["scenario"] == "predator_prey"
+        
+        # Test Pursuer/Evader scenario generator
+        pe_generator = PEScenarioGenerator()
+        pe_data = pe_generator.generate_data(6, 8, time_steps=4)  # 2 pursuers, 4 evaders
+        assert len(pe_data["agents"]) == 6
+        assert len(pe_data["interactions"]) <= 8
+        assert pe_data["scenario"] == "pursuer_evader"
+        
+        # Test Search and Rescue scenario generator
+        sar_generator = SARScenarioGenerator()
+        sar_data = sar_generator.generate_data(10, 12)  # Mixture of searchers, coordinators, victims
+        assert len(sar_data["agents"]) == 10
+        assert len(sar_data["interactions"]) == 12
+        assert sar_data["scenario"] == "search_rescue"

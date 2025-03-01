@@ -8,7 +8,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ValidationError
 
 from pydantic import BaseModel, Field
-from .models import AgentInteraction, GraphQuery, SyntheticDataParams
+from .models import AgentInteraction, GraphQuery, SyntheticDataParams, ScenarioParams
 from .database import get_database
 from .websocket_handler import ConnectionManager
 from .data_generator import DataGenerator
@@ -453,6 +453,48 @@ async def generate_data(params: SyntheticDataParams, request: Request) -> Dict[s
         }
     except Exception as e:
         logger.error(f"Error generating synthetic data: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@generate_router.post("/scenario",
+    response_model=Dict[str, Any],
+    summary="Generate Scenario-Based Data",
+    description="Generate synthetic data based on a specific simulation scenario.",
+    response_description="Generated scenario-based data."
+)
+async def generate_scenario_data(params: ScenarioParams, request: Request) -> Dict[str, Any]:
+    """Generate scenario-based synthetic data."""
+    try:
+        # Debug logging
+        logger.info(f"Received scenario generation request: {params.dict()}")
+        
+        db = get_db(request)
+        generator = DataGenerator(scenario=params.scenario)
+        
+        # Generate scenario-specific data with optional rounds parameter
+        kwargs = {}
+        if params.rounds is not None:
+            kwargs["rounds"] = params.rounds
+            
+        logger.info(f"Generating scenario data for {params.scenario} with {params.numAgents} agents, {params.numInteractions} interactions")
+        data = generator.generate_scenario_data(params.numAgents, params.numInteractions, **kwargs)
+        
+        # Store agents
+        for agent in data["agents"]:
+            await db.store_agent(agent)
+        
+        # Store interactions
+        for interaction in data["interactions"]:
+            await db.store_interaction(interaction)
+        
+        logger.info(f"Successfully generated scenario data: {params.scenario}")
+        return {
+            "status": "success",
+            "scenario": params.scenario,
+            "data": data
+        }
+    except Exception as e:
+        logger.error(f"Error generating scenario data: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @generate_router.post("/kqml",

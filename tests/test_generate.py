@@ -5,8 +5,10 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import uuid
 from datetime import datetime, timezone
 
-from app.main import app
-from app.data_generator import DataGenerator
+# Mock logging setup before importing the app
+with patch('app.monitoring.logging_config.setup_logging', MagicMock()):
+    from app.main import app
+    from app.data_generator import DataGenerator
 
 
 @pytest.fixture
@@ -187,3 +189,76 @@ def test_legacy_generate_kqml(client, mock_generator, mock_kqml_handler):
     
     # Verify KQML handler calls
     mock_kqml_handler.assert_called_once()
+
+
+@pytest.fixture
+def mock_scenario_generator():
+    """Mock scenario generator fixture."""
+    with patch("app.data_generator.DataGenerator.generate_scenario_data") as mock:
+        mock.return_value = {
+            "agents": [
+                {
+                    "id": "agent-1",
+                    "type": "prisoner",
+                    "role": "cooperator",
+                    "strategy": "cooperator"
+                },
+                {
+                    "id": "agent-2",
+                    "type": "prisoner",
+                    "role": "defector",
+                    "strategy": "defector"
+                }
+            ],
+            "interactions": [
+                {
+                    "interaction_id": "interaction-1",
+                    "sender_id": "agent-1",
+                    "receiver_id": "agent-2",
+                    "topic": "round_decision",
+                    "message": "Round 1: cooperator cooperates, defector defects",
+                    "interaction_type": "cooperate",
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "run_id": "run-1",
+                    "metadata": {
+                        "scenario": "prisoners_dilemma",
+                        "round": 1,
+                        "sender_decision": "cooperate",
+                        "receiver_decision": "defect"
+                    }
+                }
+            ],
+            "run_id": "run-1",
+            "scenario": "prisoners_dilemma"
+        }
+        yield mock
+
+
+def test_generate_scenario(client, mock_db, mock_scenario_generator):
+    """Test generating scenario-based data."""
+    # Create test data
+    params = {
+        "scenario": "pd",
+        "numAgents": 2,
+        "numInteractions": 1,
+        "rounds": 3
+    }
+    
+    # Make request
+    response = client.post("/generate/scenario", json=params)
+    
+    # Verify response
+    assert response.status_code == 200
+    assert response.json()["status"] == "success"
+    assert response.json()["scenario"] == "pd"
+    assert "agents" in response.json()["data"]
+    assert "interactions" in response.json()["data"]
+    assert "scenario" in response.json()["data"]
+    assert response.json()["data"]["scenario"] == "prisoners_dilemma"
+    
+    # Verify generator calls
+    mock_scenario_generator.assert_called_once_with(2, 1, rounds=3)
+    
+    # Verify DB calls
+    assert mock_db.store_agent.call_count == 2
+    assert mock_db.store_interaction.call_count == 1

@@ -8,6 +8,11 @@ import httpx
 from typing import Dict, Any, List
 from fastapi import FastAPI
 from httpx import AsyncClient
+from unittest.mock import patch, MagicMock
+
+# Mock logging setup to avoid file access issues
+patch('app.monitoring.logging_config.setup_logging', MagicMock()).start()
+
 from app.database.arango.database import ArangoDatabase
 
 # Set test environment variables if not already set
