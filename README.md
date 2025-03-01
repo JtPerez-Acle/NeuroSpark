@@ -1,37 +1,53 @@
-# Agent Interaction Backend v0.8.2
+# NeuroSpark v0.9.0 (Unreleased)
 
-A Multi-Agent Graph Intelligence System for processing, storing, and analyzing agent interactions with advanced network analysis capabilities.
+An AI-Powered Blockchain Intelligence System for analyzing smart contracts, monitoring blockchain activities, and providing real-time Web3 security insights with advanced graph analytics.
 
-## 🌟 New in v0.8.2: NetworkX Integration
+## 🌟 New in v0.9.0: Blockchain Intelligence & Risk Analysis
 
-This release introduces comprehensive graph analysis through NetworkX integration:
+This release transforms the platform into a comprehensive blockchain intelligence system:
 
-- **Advanced Graph Metrics**: Density, diameter, clustering coefficient, connectivity
-- **Node Centrality Analysis**: Identify key agents through degree, betweenness, closeness, eigenvector centrality, and PageRank
-- **Community Detection**: Discover agent clusters using Louvain, Label Propagation, and other algorithms
-- **Temporal Network Analysis**: Track how interaction patterns evolve over time
-- **Custom Force-Directed Layouts**: Generate optimal node positions for visualizations
-- **Enhanced API Endpoints**: `/analysis/*` endpoints for all network analysis features
+- **Web3 Data Integration**: Ingest and model data from multiple blockchain networks (Ethereum, Solana)
+- **Blockchain Entity Models**: Track and analyze wallets, transactions, smart contracts, and events
+- **Risk Intelligence System**: Multi-factor risk scoring for all blockchain entities
+- **Smart Contract Analysis**: Security vulnerability detection for smart contract code
+- **Real-time Monitoring**: Detect and alert on suspicious blockchain activities
+- **LLM-Powered Queries**: Natural language interface for blockchain data analysis
+- **Enhanced Graph Analytics**: Specialized algorithms for blockchain transaction flow analysis
 
 ## Core Features
 
-- FastAPI-based REST API with WebSocket support for real-time updates
-- ArangoDB graph database for persistent storage of agent interactions
-- Enhanced Agent Interaction model with rich metadata
-- Consistent REST API endpoints for interactions, agents, and data generation
-- Multiple scenario-based synthetic data generators:
-  - Predator/Prey (information propagation)
-  - Prisoner's Dilemma (cooperation dynamics)
-  - Pursuer/Evader (spatial dynamics)
-  - Search and Rescue (coordination patterns)
-- Interactive API documentation with Swagger UI
-- Real-time agent interaction monitoring via WebSocket
-- Comprehensive test suite with 75+ tests and >50% code coverage
-- Extensive logging and monitoring with Prometheus/Grafana integration
-- Docker containers with flexible deployment options:
-  - Production mode with full monitoring stack
-  - Development mode with minimal components
-  - Automated testing environment with containerized tests
+- **Blockchain Integration & Analysis**:
+  - Multi-chain support with connectors for Ethereum and Solana
+  - Comprehensive entity models for wallets, transactions, contracts, and events
+  - Graph-based approach to blockchain data for relationship analysis
+  - Automatic risk scoring based on multiple risk factors
+  - Real-time monitoring and alerts for suspicious activities
+
+- **Advanced Graph Analytics**:
+  - NetworkX integration for blockchain transaction flow analysis
+  - Node centrality metrics to identify key entities in transaction networks
+  - Community detection to discover related wallet clusters
+  - Temporal analysis to track changes in blockchain behavior over time
+  - Visualization layouts optimized for blockchain network display
+
+- **LLM-Powered Natural Language Interface**:
+  - Query blockchain data using natural language
+  - Integrated with Ollama for local LLM deployment
+  - Specialized prompt templates for blockchain-specific queries
+  - Context-aware responses with relevant transaction data
+
+- **Synthetic Blockchain Data Generation**:
+  - Generate realistic blockchain transaction patterns
+  - Simulate various DeFi scenarios (DEX trades, lending, NFT markets)
+  - Create test environments with known vulnerabilities for security research
+  - Model normal and suspicious transaction patterns for risk testing
+
+- **Robust Infrastructure**:
+  - FastAPI backend with async/await pattern for high performance
+  - WebSocket support for real-time blockchain event notifications
+  - ArangoDB graph database for efficient blockchain data storage
+  - Comprehensive test suite with 75+ tests and >50% code coverage
+  - Docker-based deployment with monitoring stack (Prometheus/Grafana)
 
 ## System Architecture
 
@@ -43,18 +59,44 @@ graph TD
         WS[WebSocket Server]
         DG[Data Generator]
         
+        subgraph "Blockchain Components"
+            BC[Blockchain Connectors]
+            RI[Risk Intelligence]
+            SC[Smart Contract Analysis]
+            BA[Blockchain API]
+        end
+        
         subgraph "Analysis Components" 
             NX[NetworkX Integration]
             GM[Graph Metrics]
             CD[Community Detection]
             CN[Centrality Analysis]
-            TM[Temporal Metrics]
-            VL[Visualization Layouts]
+            TF[Transaction Flow Analysis]
+            AR[Anomaly Recognition]
+        end
+        
+        subgraph "LLM Components"
+            LM[LLM Integration]
+            QP[Query Parser]
+            PT[Prompt Templates]
         end
     end
     
     subgraph "Database"
         DB[(ArangoDB Graph Database)]
+        subgraph "Entity Collections"
+            WC[Wallets]
+            TC[Transactions]
+            CC[Contracts]
+            EC[Events]
+            AC[Alerts]
+        end
+    end
+    
+    subgraph "External Services"
+        ETH[Ethereum API]
+        SOL[Solana API]
+        OL[Ollama LLM]
     end
     
     subgraph "Monitoring"
@@ -63,7 +105,7 @@ graph TD
         LOG[Logging System]
     end
     
-    US[Users/Agents] -->|Interact with| FE
+    US[Users] -->|Interact with| FE
     FE -->|Send Requests| BE
     BE -->|Real-time Updates| WS
     WS -->|Notifications| FE
@@ -71,13 +113,29 @@ graph TD
     BE -->|Generate Test Data| DG
     DG -->|Populate| DB
     
+    %% Blockchain Integration
+    BC -->|Ethereum Data| ETH
+    BC -->|Solana Data| SOL
+    BC -->|Process| BA
+    BA -->|Store| DB
+    BA -->|Analyze Risk| RI
+    RI -->|Generate| AC
+    SC -->|Analyze| CC
+    
     %% NetworkX Integration
     BE <-->|Analyze| NX
     NX -->|Calculate| GM
     NX -->|Detect| CD
     NX -->|Measure| CN
-    NX -->|Track| TM
-    NX -->|Generate| VL
+    NX -->|Track| TF
+    NX -->|Detect| AR
+    
+    %% LLM Integration
+    BE <-->|Natural Language Query| LM
+    LM -->|Query| OL
+    LM -->|Parse| QP
+    LM -->|Template| PT
+    QP -->|Database Query| DB
     
     %% Monitoring
     BE -->|Metrics| PR
@@ -89,13 +147,19 @@ graph TD
     classDef database fill:#ff7043,stroke:#e64a19,color:#fff
     classDef monitoring fill:#ab47bc,stroke:#7b1fa2,color:#fff
     classDef analysis fill:#26c6da,stroke:#00838f,color:#fff
-    classDef user fill:#78909c,stroke:#37474f,color:#fff
+    classDef blockchain fill:#fdd835,stroke:#f57f17,color:#000
+    classDef llm fill:#ec407a,stroke:#ad1457,color:#fff
+    classDef external fill:#78909c,stroke:#37474f,color:#fff
+    classDef user fill:#8d6e63,stroke:#4e342e,color:#fff
     
     class FE frontend
     class BE,WS,DG backend
-    class DB database
+    class DB,WC,TC,CC,EC,AC database
     class PR,GR,LOG monitoring
-    class NX,GM,CD,CN,TM,VL analysis
+    class NX,GM,CD,CN,TF,AR analysis
+    class BC,RI,SC,BA blockchain
+    class LM,QP,PT llm
+    class ETH,SOL,OL external
     class US user
 ```
 
@@ -103,46 +167,86 @@ graph TD
 
 ```mermaid
 classDiagram
-    %% Core Entities
-    class Agent {
-        +string id
-        +string name
-        +string type
-        +string role
+    %% Blockchain Entities
+    class Wallet {
+        +string address
+        +string chain
+        +float balance
+        +string wallet_type
+        +datetime first_seen
+        +datetime last_active
+        +float risk_score
+        +List tags
         +dict metadata
-        +datetime created_at
-        +create()
-        +update()
-        +delete()
-    }
-    
-    class AgentInteraction {
-        +string id
-        +string sender_id
-        +string receiver_id
-        +string topic
-        +string message
-        +string interaction_type
-        +int priority (1-5)
-        +float sentiment (-1 to 1)
-        +dict metadata
-        +datetime timestamp
-        +int duration_ms
-        +string run_id
         +store()
         +update()
-        +query()
+        +get_transactions()
+        +get_contracts()
+        +calculate_risk()
     }
     
-    class Run {
-        +string id
+    class Transaction {
+        +string hash
+        +string chain
+        +int block_number
+        +datetime timestamp
+        +string from_address
+        +string to_address
+        +float value
+        +string status
+        +int gas_used
+        +int gas_price
+        +string input_data
+        +float risk_score
+        +store()
+        +get_receipt()
+        +calculate_risk()
+    }
+    
+    class Contract {
+        +string address
+        +string chain
+        +string creator
+        +string creation_tx
+        +datetime creation_timestamp
+        +bool verified
         +string name
+        +string bytecode
+        +string abi
+        +string source_code
+        +float risk_score
+        +List vulnerabilities
+        +store()
+        +get_events()
+        +analyze_security()
+        +calculate_risk()
+    }
+    
+    class Event {
+        +string contract_address
+        +string tx_hash
+        +int block_number
+        +int log_index
+        +datetime timestamp
+        +string name
+        +string signature
+        +dict params
+        +store()
+        +decode()
+    }
+    
+    class Alert {
+        +string id
+        +datetime timestamp
+        +string severity
+        +string type
+        +string entity
+        +string entity_type
         +string description
-        +datetime start_time
-        +datetime end_time
-        +dict metrics
-        +create()
-        +get_interactions()
+        +string status
+        +store()
+        +acknowledge()
+        +resolve()
     }
     
     %% Analysis Components
@@ -150,182 +254,180 @@ classDiagram
         +List~Dict~ nodes
         +List~Dict~ links
         +bool directed
-        +get_basic_metrics()
-        +get_centrality_metrics()
+        +get_metrics()
+        +get_centrality()
         +detect_communities()
-        +get_layout_positions()
+        +get_layout()
         +get_temporal_metrics()
-        +get_visualization_data()
+        +get_visualization()
     }
     
-    class GraphMetrics {
-        +int node_count
-        +int edge_count
-        +float density
-        +float average_degree
-        +bool is_connected
-        +int components
-        +float clustering
-        +int diameter
+    class RiskScoring {
+        +calculate_wallet_risk()
+        +calculate_transaction_risk()
+        +calculate_contract_risk()
+        +get_high_risk_entities()
+        +generate_alerts()
     }
     
-    class CentralityMeasures {
-        +Dict degree_centrality
-        +Dict betweenness_centrality
-        +Dict closeness_centrality
-        +Dict eigenvector_centrality
-        +Dict pagerank
-    }
-    
-    class Community {
-        +int community_count
-        +List~List~ communities
-        +float modularity
-        +List community_sizes
+    class LLMQueryEngine {
+        +parse_natural_query()
+        +generate_database_query()
+        +format_response()
+        +get_context()
     }
     
     %% Relationships
-    Agent "1" -- "many" AgentInteraction : sends
-    Agent "1" -- "many" AgentInteraction : receives
-    Run "1" -- "many" AgentInteraction : contains
-    Agent "many" -- "many" Run : participates
+    Wallet "1" -- "many" Transaction : sends
+    Wallet "1" -- "many" Transaction : receives
+    Wallet "1" -- "many" Contract : deploys
+    Contract "1" -- "many" Event : emits
+    Transaction "1" -- "many" Event : contains
+    Wallet "many" -- "many" Alert : related_to
+    Contract "many" -- "many" Alert : related_to
+    Transaction "many" -- "many" Alert : related_to
     
-    NetworkAnalysis -- GraphMetrics : calculates
-    NetworkAnalysis -- CentralityMeasures : measures
-    NetworkAnalysis -- Community : detects
-    NetworkAnalysis "1" -- "many" Agent : analyzes
-    NetworkAnalysis "1" -- "many" AgentInteraction : analyzes
+    NetworkAnalysis -- Wallet : analyzes
+    NetworkAnalysis -- Transaction : analyzes
+    NetworkAnalysis -- Contract : analyzes
+    
+    RiskScoring -- Wallet : scores
+    RiskScoring -- Transaction : scores
+    RiskScoring -- Contract : scores
+    RiskScoring -- Alert : generates
+    
+    LLMQueryEngine -- Wallet : queries
+    LLMQueryEngine -- Transaction : queries
+    LLMQueryEngine -- Contract : queries
+    LLMQueryEngine -- Event : queries
 ```
 
 ## Data Flow and Analytics Processes
 
-### Core Interaction Flow
+### Blockchain Transaction Flow
 
 ```mermaid
 sequenceDiagram
     participant Client as Client Application
     participant API as FastAPI Backend
-    participant Handler as Interaction Handler
+    participant BlockchainAPI as Blockchain API
+    participant RiskSystem as Risk Scoring System
     participant DB as ArangoDB Database
     participant WS as WebSocket Server
     
-    Client->>API: POST /interactions
-    Note over API,Handler: Interaction contains:<br>- sender/receiver<br>- topic<br>- interaction_type<br>- priority<br>- sentiment<br>- message<br>- metadata
+    Client->>API: GET /blockchain/wallets/{address}
+    API->>BlockchainAPI: Process wallet request
+    BlockchainAPI->>DB: Query wallet data
+    DB-->>BlockchainAPI: Return wallet data
+    BlockchainAPI->>RiskSystem: Calculate risk score
+    RiskSystem-->>BlockchainAPI: Return risk assessment
+    BlockchainAPI-->>API: Return wallet with risk data
+    API-->>Client: Return wallet information
     
-    API->>Handler: Process interaction
-    Handler->>DB: Store interaction
-    DB-->>Handler: Confirm storage
-    Handler->>WS: Broadcast update
-    WS-->>Client: Real-time notification
-    Handler-->>API: Return confirmation
-    API-->>Client: 201 Created
+    Client->>API: GET /blockchain/transactions/{hash}
+    API->>BlockchainAPI: Process transaction request
+    BlockchainAPI->>DB: Query transaction
+    DB-->>BlockchainAPI: Return transaction data
+    BlockchainAPI->>RiskSystem: Calculate transaction risk
+    RiskSystem-->>BlockchainAPI: Return risk assessment
+    BlockchainAPI-->>API: Return enriched transaction
+    API-->>Client: Return transaction information
     
-    Client->>API: GET /interactions?filter=params
-    API->>DB: Query interactions
-    DB-->>API: Return matching interactions
-    API-->>Client: Return filtered results
-    
-    Note over Client,WS: For real-time dashboards
-    Client->>WS: Subscribe to updates
+    Note over Client,WS: For real-time monitoring
+    Client->>WS: Subscribe to blockchain events
     WS-->>Client: Confirm subscription
-    DB->>WS: New interaction created
+    BlockchainAPI->>RiskSystem: New high-risk transaction detected
+    RiskSystem->>DB: Store security alert
+    DB->>WS: Broadcast security alert
     WS-->>Client: Push notification
 ```
 
-### Network Analysis Flow
+### Risk Analysis Flow
 
 ```mermaid
 sequenceDiagram
     participant Client as Client Application
     participant API as FastAPI Backend
     participant DB as ArangoDB Database
+    participant RiskEngine as Risk Scoring Engine
     participant NetworkX as NetworkX Analyzer
     
-    Client->>API: GET /analysis/metrics
-    API->>DB: Fetch agents and interactions
-    DB-->>API: Return graph data
-    API->>NetworkX: Calculate graph metrics
-    Note over NetworkX: Process metrics:<br>- density<br>- connectivity<br>- clustering<br>- diameter<br>- etc.
-    NetworkX-->>API: Return metrics
-    API-->>Client: Return processed metrics
+    Client->>API: GET /blockchain/risk/{entity_type}
+    API->>DB: Fetch high-risk entities
+    DB-->>API: Return entity data
+    API-->>Client: Return high-risk entities
     
-    Client->>API: GET /analysis/centrality
-    API->>DB: Fetch graph data
-    DB-->>API: Return nodes and links
-    API->>NetworkX: Calculate centrality metrics
-    Note over NetworkX: Process centrality:<br>- degree<br>- betweenness<br>- closeness<br>- eigenvector<br>- PageRank
-    NetworkX-->>API: Return centrality values
-    API-->>Client: Return centrality by node
+    Client->>API: GET /blockchain/contracts/{address}/audit
+    API->>DB: Fetch contract data
+    DB-->>API: Return contract details
+    API->>RiskEngine: Analyze contract security
+    Note over RiskEngine: Security analysis:<br>- Reentrancy<br>- Overflow<br>- Authorization<br>- Logic flaws<br>- etc.
+    RiskEngine-->>API: Return vulnerabilities
+    API-->>Client: Return security audit
     
-    Client->>API: GET /analysis/communities
-    API->>DB: Fetch graph data
-    DB-->>API: Return nodes and links
-    API->>NetworkX: Detect communities
-    Note over NetworkX: Apply algorithms:<br>- Louvain<br>- Label Propagation<br>- Greedy Modularity
-    NetworkX-->>API: Return community assignments
-    API-->>Client: Return community data
+    Client->>API: POST /blockchain/risk/analyze
+    Note over Client,API: Request includes address to analyze
+    API->>DB: Fetch entity and related data
+    DB-->>API: Return blockchain data
+    API->>RiskEngine: Perform comprehensive analysis
+    RiskEngine->>NetworkX: Analyze transaction patterns
+    NetworkX-->>RiskEngine: Return network metrics
+    Note over RiskEngine: Risk assessment:<br>- Transaction patterns<br>- Network position<br>- Historical behavior<br>- Security issues
+    RiskEngine-->>API: Return risk profile
+    API-->>Client: Return detailed risk analysis
     
-    Client->>API: GET /analysis/visualization
-    API->>DB: Fetch graph data
-    DB-->>API: Return nodes and links
-    API->>NetworkX: Generate comprehensive data
-    Note over NetworkX: Combine:<br>- layout positions<br>- communities<br>- centrality metrics
-    NetworkX-->>API: Return enhanced data
-    API-->>Client: Return visualization data
+    Client->>API: GET /blockchain/risk/alerts
+    API->>DB: Fetch active alerts
+    DB-->>API: Return alert data
+    API->>RiskEngine: Enrich alerts with context
+    RiskEngine-->>API: Return enriched alerts
+    API-->>Client: Return security alerts
 ```
 
 ## API Endpoints
 
-### Core Endpoints
+### Blockchain Data Endpoints
 
-- `/agents` - Create and query agents
-- `/agents/{agent_id}/interactions` - Get agent interactions
-- `/agents/{agent_id}/runs` - Get agent runs
-- `/interactions` - Create and query interactions
-- `/graph` - Get graph visualization data
-- `/network` - Get network data
-- `/network/query` - Query network with filters
-- `/query` - Natural language query interface
+- `/blockchain/wallets/{address}` - Get wallet information
+- `/blockchain/wallets/{address}/transactions` - Get wallet transactions
+- `/blockchain/wallets/{address}/contracts` - Get contracts deployed or interacted with
+- `/blockchain/transactions/{tx_hash}` - Get transaction details
+- `/blockchain/contracts/{address}` - Get contract information
+- `/blockchain/contracts/{address}/events` - Get contract events
+- `/blockchain/contracts/{address}/audit` - Get contract security audit
+
+### Risk Intelligence Endpoints
+
+- `/blockchain/risk/{entity_type}` - Get high-risk entities (wallets, transactions, contracts)
+- `/blockchain/risk/alerts` - Get active security alerts
+- `/blockchain/risk/analyze` - Perform comprehensive risk analysis
+- `/blockchain/risk/suspicious` - Get suspicious activities
+
+### Network Graph Endpoints
+
+- `/blockchain/network` - Get blockchain network visualization data
+- `/blockchain/network/query` - Query blockchain network with complex filters
+
+### Natural Language Query Endpoints
+
+- `/blockchain/query/natural` - LLM-powered natural language blockchain queries
+- `/blockchain/query/trace` - Trace transaction paths through entities
+- `/blockchain/query/pattern` - Identify transaction patterns
+
+### Analytics Endpoints
+
+- `/analysis/metrics` - Get blockchain network metrics
+- `/analysis/centrality` - Calculate key entities in blockchain network
+- `/analysis/communities` - Detect related entity clusters
+- `/analysis/flow` - Analyze value flow through the network
+- `/analysis/visualization` - Get enhanced network visualization
 
 ### Data Generation Endpoints
 
-- `/generate/data` - Generate basic synthetic data
-- `/generate/scenario` - Generate scenario-based data:
-  - `scenario=predator_prey` - Information propagation simulation
-  - `scenario=pd` - Prisoner's Dilemma cooperation dynamics
-  - `scenario=pursuer_evader` - Spatial pursuit-evasion dynamics
-  - `scenario=search_rescue` - Team coordination scenario
+- `/generate/data` - Generate synthetic blockchain data
+- `/generate/scenario` - Generate blockchain scenario-based data
 
-### Network Analysis Endpoints (New in v0.8.2)
-
-- `/analysis/metrics` - Get comprehensive graph metrics
-  - Node/edge counts, density, connectivity components
-  - Clustering coefficient, diameter, path lengths
-  
-- `/analysis/centrality` - Calculate node importance measures
-  - Degree centrality (in/out for directed graphs)
-  - Betweenness centrality (bridge nodes)
-  - Closeness centrality (proximity)
-  - Eigenvector centrality (connected to important nodes)
-  - PageRank (for directed graphs)
-  
-- `/analysis/communities` - Detect natural clusters
-  - Multiple algorithms: Louvain, Label Propagation, etc.
-  - Community sizes and modularity metrics
-  
-- `/analysis/layout` - Generate layout positions for visualization
-  - Various algorithms: Spring, Circular, Spectral, etc.
-  - 2D or 3D coordinate generation
-  
-- `/analysis/temporal` - Analyze network evolution over time
-  - Time windowed metrics calculations
-  - Temporal patterns detection
-  
-- `/analysis/visualization` - Get enhanced graph visualization data
-  - Combined layout, communities, and metrics
-  - Optimized for visualization libraries
-
-Access the full interactive API documentation at [`http://localhost:8000/docs`](http://localhost:8000/docs) when the server is running.
+For detailed information about all available endpoints, request/response formats, and examples, please refer to the [API_ENDPOINTS.md](./API_ENDPOINTS.md) file or visit the interactive API documentation at [`http://localhost:8000/docs`](http://localhost:8000/docs) when the server is running.
 
 ## Prerequisites
 

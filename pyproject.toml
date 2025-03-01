@@ -1,12 +1,12 @@
 [project]
-name = "agent-interaction-backend"
-version = "0.8.2"
-description = "Multi-Agent Graph Intelligence System with ArangoDB - Backend"
+name = "neurospark"
+version = "0.9.0"
+description = "AI-Powered Blockchain Intelligence System"
 
 [tool.poetry]
-name = "agent-interaction-backend"
-version = "0.8.2"
-description = "Multi-Agent Graph Intelligence System with ArangoDB - Backend"
+name = "neurospark"
+version = "0.9.0"
+description = "AI-Powered Blockchain Intelligence System"
 authors = ["Jt Perez-Acle jtperez.acle@gmail.com"]
 packages = [
     { include = "app" }
@@ -14,10 +14,11 @@ packages = [
 
 [tool.poetry.dependencies]
 python = ">=3.11,<4.0"
-fastapi = ">=0.68.0,<0.69.0"
+fastapi = ">=0.104.0"  # Updated for compatibility with pydantic v2
 uvicorn = ">=0.15.0,<0.16.0"
 python-dotenv = ">=0.19.0"
-pydantic = ">=1.8.0,<2.0.0"
+pydantic = ">=2.9.0,<3.0.0"  # Updated to v2 for ollama compatibility
+pydantic-settings = ">=2.0.0"  # For BaseSettings in pydantic v2
 pytz = ">=2021.1"
 loguru = ">=0.7.2,<0.8.0"
 prometheus-client = ">=0.19.0"
@@ -28,7 +29,18 @@ pandas = ">=2.0.0"
 matplotlib = ">=3.5.0"
 scikit-learn = ">=1.0.0"
 python-louvain = ">=0.16"
-# We no longer need Neo4j as we've migrated to ArangoDB
+
+# Blockchain dependencies
+web3 = ">=6.0.0"
+solana = ">=0.30.0"
+aiohttp = ">=3.8.5"
+backoff = ">=2.2.0"
+redis = ">=4.5.0"
+
+# LLM dependencies
+ollama = ">=0.4.0"
+pytest = "^8.3.4"
+pytest-asyncio = "^0.25.3"
 
 [tool.poetry.group.test]
 optional = true

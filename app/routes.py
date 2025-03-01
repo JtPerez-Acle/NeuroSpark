@@ -1,688 +1,503 @@
-"""API routes for the Agent Interaction Backend."""
-from datetime import datetime, timezone, timedelta
-import logging
-from typing import Dict, Any, List, Optional
-import uuid
-from fastapi import APIRouter, FastAPI, Request, HTTPException, Query, WebSocket, WebSocketDisconnect
-from fastapi.responses import JSONResponse
-from pydantic import BaseModel, ValidationError
-
+"""API routes for the application."""
+from fastapi import APIRouter, Request, HTTPException, Query, Path, Depends, BackgroundTasks
 from pydantic import BaseModel, Field
-from .models import AgentInteraction, GraphQuery, SyntheticDataParams, ScenarioParams
-from .database import get_database
-from .websocket_handler import ConnectionManager
+from typing import List, Dict, Any, Optional
+import uuid
+from datetime import datetime, timezone
+import asyncio
+from loguru import logger
+
+from .config import Settings
+from .models import (
+    ScenarioParams, SyntheticDataParams, DatabaseOperation,
+    NaturalLanguageQuery, GraphData
+)
 from .data_generator import DataGenerator
 
-# Define models for database administration
-class DatabaseOperation(BaseModel):
-    """Database operation response."""
-    success: bool = Field(..., description="Success status")
-    message: str = Field(..., description="Operation message")
-    details: Dict[str, Any] = Field(default_factory=dict, description="Operation details")
-
-# Configure logging
-logger = logging.getLogger("kqml-parser-backend")
-
-# Create routers
-agent_router = APIRouter()
-network_router = APIRouter()
-synthetic_router = APIRouter()
-generate_router = APIRouter()  # New router for generate endpoints
-interactions_router = APIRouter()  # New router for interactions
-admin_router = APIRouter()  # New router for admin operations
+# Define routers
+generate_router = APIRouter()
+admin_router = APIRouter()
+compat_router = APIRouter(tags=["compatibility"])  # For backward compatibility
 
 def get_db(request: Request):
-    """Get database instance from app state."""
-    return request.app.state.db
+    """Get a database connection from the request state."""
+    if hasattr(request.app.state, "db"):
+        return request.app.state.db
+    else:
+        raise HTTPException(status_code=500, detail="Database connection not available")
 
-@agent_router.post("",
-    response_model=Dict[str, Any],
-    summary="Create Agent",
-    description="Create a new agent.",
-    response_description="Status of agent creation.",
-    responses={
-        422: {"description": "Invalid agent data"},
-        500: {"description": "Internal server error"}
-    }
-)
-async def create_agent(agent_data: Dict[str, Any], request: Request) -> Dict[str, Any]:
-    """Create a new agent."""
-    try:
-        db = get_db(request)
-        
-        # Validate required fields
-        if "id" not in agent_data:
-            raise ValidationError("Missing required field: id")
-        if "type" not in agent_data:
-            raise ValidationError("Missing required field: type")
-        if "role" not in agent_data:
-            raise ValidationError("Missing required field: role")
-            
-        # Add timestamp
-        agent_data["timestamp"] = datetime.now(timezone.utc).isoformat()
-        
-        # Store agent
-        await db.store_agent(agent_data)
-        return {"message": "Agent created successfully", "agent": agent_data}
-    except ValidationError as e:
-        logger.error(f"Validation error creating agent: {str(e)}")
-        raise HTTPException(status_code=422, detail=str(e))
-    except Exception as e:
-        logger.error(f"Error creating agent: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-@interactions_router.get("/{interaction_id}",
-    response_model=Dict[str, Any],
-    summary="Get Interaction",
-    description="Get a specific interaction by ID.",
-    response_description="Interaction details.",
-    responses={
-        404: {"description": "Interaction not found"},
-        500: {"description": "Internal server error"}
-    }
-)
-async def get_interaction(interaction_id: str, request: Request) -> Dict[str, Any]:
-    """Get a specific interaction by ID."""
-    try:
-        db = get_db(request)
-        interaction = await db.get_interaction(interaction_id)
-        if not interaction:
-            raise HTTPException(status_code=404, detail=f"Interaction {interaction_id} not found")
-        return interaction
-    except HTTPException as e:
-        raise e
-    except Exception as e:
-        logger.error(f"Error getting interaction: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-@interactions_router.get("",
-    response_model=List[Dict[str, Any]],
-    summary="Get Interactions",
-    description="Get all interactions, with optional filtering.",
-    response_description="List of interactions.",
-    responses={
-        500: {"description": "Internal server error"}
-    }
-)
-async def get_interactions(
-    request: Request,
-    limit: Optional[int] = Query(100, description="Maximum number of interactions to return")
-) -> List[Dict[str, Any]]:
-    """Get interactions with optional filtering."""
-    try:
-        db = get_db(request)
-        interactions = await db.get_interactions(limit)
-        return interactions
-    except Exception as e:
-        logger.error(f"Error getting interactions: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-@interactions_router.post("",
-    response_model=Dict[str, Any],
-    summary="Store Agent Interaction",
-    description="Store an interaction between agents.",
-    response_description="Status of interaction storage.",
-    responses={
-        422: {"description": "Invalid interaction data"},
-        500: {"description": "Internal server error"}
-    }
-)
-async def store_interaction(interaction: AgentInteraction, request: Request) -> Dict[str, Any]:
-    """Store an interaction between agents."""
-    try:
-        db = get_db(request)
-        
-        # Set timestamp to current time if not provided
-        if not interaction.timestamp:
-            interaction.timestamp = datetime.now(timezone.utc)
-        
-        # Generate run_id if not provided
-        if not interaction.run_id:
-            interaction.run_id = str(uuid.uuid4())
-            
-            # Store run data
-            run_data = {
-                "id": interaction.run_id,
-                "agent_id": interaction.sender_id,
-                "timestamp": interaction.timestamp.isoformat(),
-                "status": "completed",
-                "metrics": {}
-            }
-            await db.store_run(run_data)
-        
-        # Store interaction
-        interaction_data = {
-            "id": interaction.interaction_id,
-            "sender_id": interaction.sender_id,
-            "receiver_id": interaction.receiver_id,
-            "topic": interaction.topic,
-            "message": interaction.message,
-            "interaction_type": interaction.interaction_type,
-            "timestamp": interaction.timestamp.isoformat(),
-            "run_id": interaction.run_id,
-            "priority": interaction.priority,
-            "sentiment": interaction.sentiment,
-            "duration_ms": interaction.duration_ms,
-            "metadata": interaction.metadata
-        }
-        await db.store_interaction(interaction_data)
-        
-        return {
-            "status": "success",
-            "interaction_id": interaction.interaction_id,
-            "run_id": interaction.run_id,
-            "topic": interaction.topic
-        }
-    except Exception as e:
-        logger.error(f"Error storing interaction: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-@agent_router.post("/message",
-    response_model=Dict[str, Any],
-    summary="Store Agent Interaction (Legacy)",
-    description="Store an interaction between agents (legacy endpoint, use /interactions instead).",
-    response_description="Status of interaction storage.",
-    responses={
-        422: {"description": "Invalid interaction data"},
-        500: {"description": "Internal server error"}
-    },
-    deprecated=True
-)
-async def store_agent_interaction(interaction: AgentInteraction, request: Request) -> Dict[str, Any]:
-    """Store an interaction between agents (legacy endpoint)."""
-    # Log a warning about the deprecated endpoint
-    logger.warning("The /agents/message endpoint is deprecated. Please use /interactions instead.")
-    # Use the new endpoint logic
-    return await store_interaction(interaction, request)
-    
-@agent_router.post("/interaction",
-    response_model=Dict[str, Any],
-    summary="Store Agent Interaction",
-    description="Store an interaction between agents.",
-    response_description="Status of interaction storage.",
-    responses={
-        422: {"description": "Invalid interaction data"},
-        500: {"description": "Internal server error"}
-    }
-)
-async def store_agent_interaction_new(interaction: AgentInteraction, request: Request) -> Dict[str, Any]:
-    """Store an interaction between agents."""
-    return await store_interaction(interaction, request)
-
-@agent_router.get("/{agent_id}/interactions",
-    response_model=List[Dict[str, Any]],
-    summary="Get Agent Interactions",
-    description="Get all interactions associated with an agent.",
-    response_description="List of agent interactions.",
-    responses={
-        404: {"description": "Agent not found"},
-        500: {"description": "Internal server error"}
-    }
-)
-async def get_agent_interactions(agent_id: str, request: Request) -> List[Dict[str, Any]]:
-    """Get all interactions associated with an agent."""
-    try:
-        db = get_db(request)
-        # First check if agent exists
-        agent = await db.get_agent(agent_id)
-        if agent is None:
-            raise HTTPException(status_code=404, detail=f"Agent {agent_id} not found")
-        
-        interactions = await db.get_agent_interactions(agent_id)
-        return interactions
-    except HTTPException as e:
-        raise e
-    except Exception as e:
-        logger.error(f"Error getting agent interactions: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-@agent_router.get("/{agent_id}/runs",
-    response_model=List[Dict[str, Any]],
-    summary="Get Agent Runs",
-    description="Get all runs associated with an agent.",
-    response_description="List of agent runs.",
-    responses={
-        404: {"description": "Agent not found"},
-        500: {"description": "Internal server error"}
-    }
-)
-async def get_agent_runs(agent_id: str, request: Request) -> List[Dict[str, Any]]:
-    """Get all runs associated with an agent."""
-    try:
-        db = get_db(request)
-        # First check if agent exists
-        agent = await db.get_agent(agent_id)
-        if agent is None:
-            raise HTTPException(status_code=404, detail=f"Agent {agent_id} not found")
-            
-        runs = await db.get_runs(agent_id)
-        return runs
-    except HTTPException as e:
-        raise e
-    except Exception as e:
-        logger.error(f"Error getting agent runs: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-@agent_router.get("/stats",
-    response_model=Dict[str, Any],
-    summary="Get Agent Statistics",
-    description="Get statistics about agent interactions.",
-    response_description="Agent interaction statistics."
-)
-async def get_agent_stats(agent_id: str, request: Request) -> Dict[str, Any]:
-    """Get statistics about agent interactions."""
-    try:
-        db = get_db(request)
-        interactions = await db.get_agent_interactions(agent_id)
-        
-        # Calculate basic statistics
-        total_interactions = len(interactions)
-        if total_interactions == 0:
-            return {
-                "agent_id": agent_id,
-                "total_interactions": 0,
-                "first_interaction": None,
-                "last_interaction": None,
-                "performatives": {}
-            }
-            
-        # Sort interactions by timestamp
-        interactions.sort(key=lambda x: x["timestamp"])
-        
-        # Count performatives
-        performatives = {}
-        for interaction in interactions:
-            perf = interaction["performative"]
-            performatives[perf] = performatives.get(perf, 0) + 1
-            
-        return {
-            "agent_id": agent_id,
-            "total_interactions": total_interactions,
-            "first_interaction": interactions[0]["timestamp"],
-            "last_interaction": interactions[-1]["timestamp"],
-            "performatives": performatives
-        }
-    except Exception as e:
-        logger.error(f"Error getting agent stats: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-@agent_router.get("/stats",
-    response_model=Dict[str, Any],
-    summary="Get Agent Statistics",
-    description="Get statistics about all agent interactions.",
-    response_description="Agent interaction statistics."
-)
-async def get_agents_stats(request: Request) -> Dict[str, Any]:
-    """Get statistics about all agent interactions."""
-    try:
-        db = get_db(request)
-        agents = await db.get_agents()
-        total_agents = len(agents)
-        
-        # Get all interactions
-        total_interactions = 0
-        interactions_per_agent = {}
-        
-        for agent in agents:
-            agent_id = agent["id"]
-            interactions = await db.get_agent_interactions(agent_id)
-            num_interactions = len(interactions)
-            total_interactions += num_interactions
-            interactions_per_agent[agent_id] = num_interactions
-        
-        # Count active agents (those with interactions in the last 24 hours)
-        now = datetime.now(timezone.utc)
-        active_agents = 0
-        for agent in agents:
-            agent_id = agent["id"]
-            interactions = await db.get_agent_interactions(agent_id)
-            if any(
-                (now - datetime.fromisoformat(i["timestamp"])).total_seconds() < 86400
-                for i in interactions
-            ):
-                active_agents += 1
-        
-        return {
-            "total_agents": total_agents,
-            "total_interactions": total_interactions,
-            "active_agents": active_agents,
-            "interactions_per_agent": interactions_per_agent
-        }
-    except Exception as e:
-        logger.error(f"Error getting agent stats: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-@agent_router.get("",
-    response_model=List[Dict[str, Any]],
-    summary="Get Agents",
-    description="Get all agents.",
-    response_description="List of agents.",
-    responses={
-        500: {"description": "Internal server error"}
-    }
-)
-async def get_agents(request: Request) -> List[Dict[str, Any]]:
-    """Get all agents."""
-    try:
-        db = get_db(request)
-        agents = await db.get_agents()
-        return agents
-    except Exception as e:
-        logger.error(f"Error getting agents: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-@network_router.get("",
-    response_model=Dict[str, Any],
-    summary="Get Network Data",
-    description="Get all nodes and relationships in the agent network graph.",
-    response_description="Network graph data.",
-    responses={
-        500: {"description": "Internal server error"}
-    }
-)
-async def get_network(
-    request: Request,
-    node_type: Optional[str] = Query(None, description="Filter by node type"),
-    time_range: Optional[str] = Query(None, description="Time range filter (24h, 7d, 30d, all)")
-) -> Dict[str, Any]:
-    """Get all nodes and relationships in the agent network graph."""
-    try:
-        db = get_db(request)
-        data = await db.get_network_data(node_type, time_range)
-        return data
-    except Exception as e:
-        logger.error(f"Error getting network data: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-@network_router.post("/query",
-    response_model=Dict[str, Any],
-    summary="Query Network Data",
-    description="Query network graph data with filters.",
-    response_description="Network graph data.",
-    responses={
-        422: {"description": "Invalid query parameters"},
-        500: {"description": "Internal server error"}
-    }
-)
-async def query_network(query: GraphQuery, request: Request) -> Dict[str, Any]:
-    """Query network graph data with filters."""
-    try:
-        db = get_db(request)
-        data = await db.query_network(
-            node_type=query.node_type,
-            relationship_type=query.relationship_type,
-            start_time=query.start_time,
-            end_time=query.end_time,
-            agent_ids=query.agent_ids,
-            limit=query.limit,
-            include_properties=query.include_properties
-        )
-        return data
-    except ValidationError as e:
-        raise HTTPException(status_code=422, detail=str(e))
-    except Exception as e:
-        logger.error(f"Error querying network data: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
-
+# Generate endpoints for synthetic blockchain data
 @generate_router.post("/data",
     response_model=Dict[str, Any],
-    summary="Generate Synthetic Data",
-    description="Generate synthetic data for testing.",
-    response_description="Generated synthetic data."
+    summary="Generate Synthetic Blockchain Data",
+    description="Generate synthetic blockchain data for testing.",
+    response_description="Generated synthetic blockchain data."
 )
 async def generate_data(params: SyntheticDataParams, request: Request) -> Dict[str, Any]:
-    """Generate synthetic data for testing."""
+    """Generate synthetic blockchain data for testing."""
     try:
         db = get_db(request)
         generator = DataGenerator()
         
-        # Generate synthetic data
-        data = generator.generate_synthetic_data(params.numAgents, params.numInteractions)
+        # Generate synthetic blockchain data
+        data = generator.generate_blockchain_data(params.numAgents, params.numInteractions)
         
-        # Store agents
-        for agent in data["agents"]:
-            await db.store_agent(agent)
+        # Store wallets
+        for wallet in data["agents"]:
+            # Store wallet using appropriate method
+            await db.store_wallet(wallet)
         
-        # Store interactions
-        for interaction in data["interactions"]:
-            await db.store_interaction(interaction)
+        # Store transactions
+        for transaction in data["interactions"]:
+            if "metadata" in transaction and "transaction" in transaction["metadata"]:
+                tx_data = transaction["metadata"]["transaction"]
+                await db.store_transaction(tx_data)
+            else:
+                # Skip invalid transactions
+                logger.warning(f"Skipping invalid transaction without metadata: {transaction.get('interaction_id', 'unknown')}")
         
         return {
             "status": "success",
             "data": data
         }
     except Exception as e:
-        logger.error(f"Error generating synthetic data: {str(e)}")
+        logger.error(f"Error generating synthetic blockchain data: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
-
 
 @generate_router.post("/scenario",
     response_model=Dict[str, Any],
-    summary="Generate Scenario-Based Data",
-    description="Generate synthetic data based on a specific simulation scenario.",
-    response_description="Generated scenario-based data."
+    summary="Generate Blockchain Scenario Data",
+    description="Generate synthetic blockchain data based on a specific scenario (dex, lending, nft, token_transfer).",
+    response_description="Generated blockchain scenario data."
 )
 async def generate_scenario_data(params: ScenarioParams, request: Request) -> Dict[str, Any]:
-    """Generate scenario-based synthetic data."""
+    """Generate blockchain scenario-based synthetic data."""
     try:
         # Debug logging
-        logger.info(f"Received scenario generation request: {params.dict()}")
+        logger.info(f"Received blockchain scenario generation request: {params.model_dump()}")
         
         db = get_db(request)
         generator = DataGenerator(scenario=params.scenario)
         
-        # Generate scenario-specific data with optional rounds parameter
+        # Generate blockchain scenario-specific data with optional blocks parameter
         kwargs = {}
-        if params.rounds is not None:
-            kwargs["rounds"] = params.rounds
+        if params.blocks is not None:
+            kwargs["blocks"] = params.blocks
             
-        logger.info(f"Generating scenario data for {params.scenario} with {params.numAgents} agents, {params.numInteractions} interactions")
-        data = generator.generate_scenario_data(params.numAgents, params.numInteractions, **kwargs)
+        logger.info(f"Generating blockchain scenario data for {params.scenario} with {params.numAgents} wallets, {params.numInteractions} transactions")
+        data = generator.generate_blockchain_data(params.numAgents, params.numInteractions, **kwargs)
         
-        # Store agents
-        for agent in data["agents"]:
-            await db.store_agent(agent)
+        # Store wallets
+        for wallet in data["agents"]:
+            await db.store_wallet(wallet)
         
-        # Store interactions
-        for interaction in data["interactions"]:
-            await db.store_interaction(interaction)
+        # Store transactions
+        for transaction in data["interactions"]:
+            if "metadata" in transaction and "transaction" in transaction["metadata"]:
+                tx_data = transaction["metadata"]["transaction"]
+                await db.store_transaction(tx_data)
+            else:
+                # Skip invalid transactions
+                logger.warning(f"Skipping invalid transaction without metadata: {transaction.get('interaction_id', 'unknown')}")
         
-        logger.info(f"Successfully generated scenario data: {params.scenario}")
+        logger.info(f"Successfully generated blockchain scenario data: {params.scenario}")
         return {
             "status": "success",
             "scenario": params.scenario,
+            "blockchain": "ethereum",
             "data": data
         }
     except Exception as e:
-        logger.error(f"Error generating scenario data: {str(e)}")
+        logger.error(f"Error generating blockchain scenario data: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@generate_router.post("/kqml",
+@generate_router.post("/transaction",
     response_model=Dict[str, Any],
-    summary="Generate Synthetic Interaction",
-    description="Generate a synthetic agent interaction.",
-    response_description="Generated agent interaction."
+    summary="Generate Blockchain Transaction",
+    description="Generate a blockchain transaction between wallets.",
+    response_description="Generated blockchain transaction."
 )
-async def generate_kqml(request: Request) -> Dict[str, Any]:
-    """Generate a synthetic agent interaction."""
+async def generate_transaction(request: Request) -> Dict[str, Any]:
+    """Generate a blockchain transaction between wallets."""
     try:
-        from app.kqml_handler import generate_synthetic_interaction as gen_interaction
-        
-        # Generate sender and receiver agents
+        # Generate sender and receiver wallets
         generator = DataGenerator()
-        sender = generator.create_agent_profile("sensor", "temperature")
-        receiver = generator.create_agent_profile("coordinator", "system")
+        sender = generator.create_wallet("EOA", "trader")
+        receiver = generator.create_wallet("EOA", "trader")
         
-        # Generate topic and message content
-        topic = "temperature_reading"
-        message = f"Current temperature is {generator.random_float(15.0, 30.0):.1f}°C"
+        # Generate blockchain transaction
+        transaction = generator.generate_transaction(sender, receiver)
         
-        # Generate synthetic interaction
-        interaction_data = gen_interaction(
-            sender_id=sender["id"],
-            receiver_id=receiver["id"],
-            topic=topic,
-            message=message,
-            interaction_type="report",
-            priority=generator.random_int(1, 5)
-        )
+        # Get database connection
+        db = get_db(request)
         
-        return interaction_data
+        # Store the wallets
+        await db.store_wallet(sender)
+        await db.store_wallet(receiver)
+        
+        # Extract the transaction from metadata
+        if "metadata" in transaction and "transaction" in transaction["metadata"]:
+            tx_data = transaction["metadata"]["transaction"]
+            # Store the transaction
+            await db.store_transaction(tx_data)
+        else:
+            # Create a basic transaction if metadata is missing
+            tx_data = {
+                "hash": f"0x{uuid.uuid4().hex}",
+                "from_address": sender["address"],
+                "to_address": receiver["address"],
+                "chain": "ethereum",
+                "value": 0,
+                "gas_used": 21000,
+                "gas_price": 20000000000,
+                "block_number": 123456,
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "status": "success"
+            }
+            await db.store_transaction(tx_data)
+            # Add transaction data to the interaction
+            if "metadata" not in transaction:
+                transaction["metadata"] = {}
+            transaction["metadata"]["transaction"] = tx_data
+        
+        return {
+            "status": "success",
+            "sender": sender,
+            "receiver": receiver,
+            "transaction": transaction
+        }
     except Exception as e:
-        logger.error(f"Error generating synthetic interaction: {str(e)}")
+        logger.error(f"Error generating blockchain transaction: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
         
-@generate_router.get("/interaction",
+@generate_router.get("/transaction",
     response_model=Dict[str, Any],
-    summary="Generate Synthetic Interaction",
-    description="Generate a synthetic agent interaction without storing it.",
-    response_description="Generated agent interaction."
+    summary="Generate Blockchain Transaction Sample",
+    description="Generate a sample blockchain transaction without storing it.",
+    response_description="Generated blockchain transaction sample."
 )
-async def generate_interaction(request: Request) -> Dict[str, Any]:
-    """Generate a synthetic agent interaction without storing it."""
+async def generate_transaction_sample(request: Request) -> Dict[str, Any]:
+    """Generate a sample blockchain transaction without storing it."""
     try:
-        from app.kqml_handler import generate_synthetic_interaction as gen_interaction
-        
-        # Generate sender and receiver agents
+        # Generate sender and receiver wallets
         generator = DataGenerator()
-        sender = generator.create_agent_profile("sensor", "temperature")
-        receiver = generator.create_agent_profile("coordinator", "system")
+        sender = generator.create_wallet("EOA", "trader")
+        receiver = generator.create_wallet("contract", "token")
         
-        # Generate topic and message content
-        topic = "temperature_reading"
-        message = f"Current temperature is {generator.random_float(15.0, 30.0):.1f}°C"
+        # Generate blockchain transaction
+        transaction = generator.generate_transaction(sender, receiver)
         
-        # Generate synthetic interaction
-        interaction_data = gen_interaction(
-            sender_id=sender["id"],
-            receiver_id=receiver["id"],
-            topic=topic,
-            message=message,
-            interaction_type="report",
-            priority=generator.random_int(1, 5)
-        )
-        
-        return interaction_data
+        return {
+            "status": "success",
+            "sender": sender,
+            "receiver": receiver,
+            "transaction": transaction
+        }
     except Exception as e:
-        logger.error(f"Error generating synthetic interaction: {str(e)}")
+        logger.error(f"Error generating blockchain transaction sample: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
-
-@synthetic_router.post("/data",
-    response_model=Dict[str, Any],
-    summary="Generate Synthetic Data (Legacy)",
-    description="Generate synthetic data for testing (legacy endpoint, use /generate/data instead).",
-    response_description="Generated synthetic data.",
-    deprecated=True
-)
-async def generate_synthetic_data(params: SyntheticDataParams, request: Request) -> Dict[str, Any]:
-    """Generate synthetic data for testing (legacy endpoint)."""
-    logger.warning("The /synthetic/data endpoint is deprecated. Please use /generate/data instead.")
-    return await generate_data(params, request)
-
-@synthetic_router.post("/kqml",
-    response_model=Dict[str, Any],
-    summary="Generate Synthetic Interaction (Legacy)",
-    description="Generate a synthetic agent interaction (legacy endpoint, use /generate/kqml instead).",
-    response_description="Generated agent interaction.",
-    deprecated=True
-)
-async def generate_synthetic_kqml(request: Request) -> Dict[str, Any]:
-    """Generate a synthetic agent interaction (legacy endpoint)."""
-    logger.warning("The /synthetic/kqml endpoint is deprecated. Please use /generate/kqml instead.")
-    return await generate_kqml(request)
 
 # Admin endpoints for database management
 @admin_router.post("/database/clear",
     response_model=DatabaseOperation,
     summary="Clear Database",
     description="Clear all data from the database.",
-    response_description="Result of clearing the database.",
-    responses={
-        500: {"description": "Internal server error"}
-    }
+    response_description="Operation result."
 )
-async def clear_database_post(request: Request) -> DatabaseOperation:
-    """Clear all data from the database using POST method."""
+async def clear_database(request: Request) -> DatabaseOperation:
+    """Clear all data from the database."""
     try:
+        # Get database connection from request state
         db = get_db(request)
+        
+        # Clear the database
         result = await db.clear_database()
         
         return DatabaseOperation(
-            success=result.get("success", True),
-            message="Database cleared successfully",
+            operation="clear_database",
+            status="success",
+            timestamp=datetime.now(timezone.utc).isoformat(),
             details=result
         )
     except Exception as e:
         logger.error(f"Error clearing database: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
-        
-@admin_router.delete("/database/clear",
+        return DatabaseOperation(
+            operation="clear_database",
+            status="error",
+            timestamp=datetime.now(timezone.utc).isoformat(),
+            details=str(e)
+        )
+
+@admin_router.post("/database/reset",
     response_model=DatabaseOperation,
-    summary="Clear Database",
-    description="Clear all data from the database.",
-    response_description="Result of clearing the database.",
-    responses={
-        500: {"description": "Internal server error"}
-    }
+    summary="Reset Database",
+    description="Reset the database to its initial state.",
+    response_description="Operation result."
 )
-async def clear_database_delete(request: Request) -> DatabaseOperation:
-    """Clear all data from the database using DELETE method."""
+async def reset_database(request: Request) -> DatabaseOperation:
+    """Reset the database to its initial state."""
     try:
+        # Get database connection from request state
         db = get_db(request)
-        result = await db.clear_database()
+        
+        # Reset the database
+        result = await db.reset_database()
         
         return DatabaseOperation(
-            success=result.get("success", True),
-            message="Database cleared successfully",
+            operation="reset_database",
+            status="success",
+            timestamp=datetime.now(timezone.utc).isoformat(),
             details=result
         )
     except Exception as e:
-        logger.error(f"Error clearing database: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
-        
-@admin_router.post("/database/clean",
+        logger.error(f"Error resetting database: {str(e)}")
+        return DatabaseOperation(
+            operation="reset_database",
+            status="error",
+            timestamp=datetime.now(timezone.utc).isoformat(),
+            details=str(e)
+        )
+
+@admin_router.get("/database/stats",
     response_model=Dict[str, Any],
-    summary="Clean Database",
-    description="Clean the database by removing orphaned nodes and invalid relationships.",
-    response_description="Result of cleaning the database.",
-    responses={
-        500: {"description": "Internal server error"}
-    }
+    summary="Database Statistics",
+    description="Get statistics about the database.",
+    response_description="Database statistics."
 )
-async def clean_database(request: Request) -> Dict[str, Any]:
-    """Clean the database by removing orphaned nodes and invalid relationships."""
+async def database_stats(request: Request) -> Dict[str, Any]:
+    """Get statistics about the database."""
     try:
+        # Get database connection from request state
         db = get_db(request)
         
-        # Find and remove orphaned nodes (interactions without agents)
-        interactions = await db.get_interactions(limit=10000)
-        agents = await db.get_agents()
+        # Get database statistics
+        stats = await db.get_database_stats()
         
-        agent_ids = set(agent["id"] for agent in agents)
-        orphaned_nodes = 0
-        invalid_relationships = 0
+        return stats
+    except Exception as e:
+        logger.error(f"Error retrieving database statistics: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# Backward compatibility API endpoints for tests (agent-based model)
+
+@compat_router.post("/agents", 
+    response_model=Dict[str, Any],
+    summary="Create Agent (Compatibility)",
+    description="[Compatibility] Create an agent."
+)
+async def create_agent(agent: Dict[str, Any], request: Request) -> Dict[str, Any]:
+    """Create an agent (compatibility endpoint)."""
+    try:
+        # Map to a wallet for blockchain model
+        wallet_data = {
+            "address": agent.get("id", f"0x{agent['id']}") if agent.get("id") else f"0x{uuid.uuid4().hex}",
+            "chain": "ethereum",
+            "wallet_type": "EOA",
+            "role": agent.get("role", "user"),
+            "tags": [agent.get("type", "human"), agent.get("role", "user")],
+            "balance": 0.0,
+            "first_seen": datetime.now(timezone.utc).isoformat(),
+            "last_active": datetime.now(timezone.utc).isoformat()
+        }
         
-        # Clean up interactions that reference non-existent agents
-        for interaction in interactions:
-            sender_id = interaction.get("sender_id")
-            receiver_id = interaction.get("receiver_id")
-            
-            if (sender_id and sender_id not in agent_ids) or (receiver_id and receiver_id not in agent_ids):
-                try:
-                    # Delete the interaction with missing agent reference
-                    await db.delete_interaction(interaction["id"])
-                    invalid_relationships += 1
-                except Exception as e:
-                    logger.warning(f"Failed to delete invalid interaction {interaction['id']}: {str(e)}")
+        # Get database connection
+        db = get_db(request)
+        
+        # Store wallet
+        await db.store_wallet(wallet_data)
         
         return {
-            "success": True,
-            "message": "Database cleaned successfully",
-            "stats": {
-                "orphaned_nodes_removed": orphaned_nodes,
-                "invalid_relationships_removed": invalid_relationships
-            }
+            "status": "success",
+            "agent": agent
         }
     except Exception as e:
-        logger.error(f"Error cleaning database: {str(e)}")
+        logger.error(f"Error creating agent: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+@compat_router.post("/agents/message",
+    response_model=Dict[str, Any],
+    summary="Send Agent Message (Compatibility)",
+    description="[Compatibility] Send a message between agents."
+)
+async def send_agent_message(message: Dict[str, Any], request: Request) -> Dict[str, Any]:
+    """Send a message between agents (compatibility endpoint)."""
+    try:
+        # Map to a transaction for blockchain model
+        transaction_data = {
+            "hash": f"0x{uuid.uuid4().hex}",
+            "from_address": message.get("sender_id", ""),
+            "to_address": message.get("receiver_id", ""),
+            "chain": "ethereum",
+            "value": 0,
+            "gas_used": 21000,
+            "gas_price": 20000000000,
+            "block_number": 123456,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "status": "success",
+            "message": message.get("message", ""),
+            "topic": message.get("topic", ""),
+            "interaction_type": message.get("interaction_type", "message")
+        }
+        
+        # Get database connection
+        db = get_db(request)
+        
+        # Store transaction
+        await db.store_transaction(transaction_data)
+        
+        return {
+            "status": "success",
+            "interaction_id": transaction_data["hash"],
+            "message": message
+        }
+    except Exception as e:
+        logger.error(f"Error sending message: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@compat_router.get("/agents/{agent_id}/runs",
+    response_model=Dict[str, Any],
+    summary="Get Agent Runs (Compatibility)",
+    description="[Compatibility] Get runs for an agent."
+)
+async def get_agent_runs(agent_id: str, request: Request) -> Dict[str, Any]:
+    """Get runs for an agent (compatibility endpoint)."""
+    return {
+        "agent_id": agent_id,
+        "runs": []
+    }
+
+@compat_router.get("/agents/{agent_id}/interactions",
+    response_model=Dict[str, Any],
+    summary="Get Agent Interactions (Compatibility)",
+    description="[Compatibility] Get interactions for an agent."
+)
+async def get_agent_interactions(agent_id: str, request: Request) -> Dict[str, Any]:
+    """Get interactions for an agent (compatibility endpoint)."""
+    try:
+        # Map to wallet transactions for blockchain model
+        db = get_db(request)
+        
+        transactions = await db.get_wallet_transactions(
+            address=agent_id,
+            limit=20
+        )
+        
+        # Convert transactions to interaction format
+        interactions = []
+        for tx in transactions:
+            interactions.append({
+                "interaction_id": tx["hash"],
+                "sender_id": tx["from_address"],
+                "receiver_id": tx["to_address"],
+                "timestamp": tx["timestamp"],
+                "topic": tx.get("topic", "ethereum_transaction"),
+                "message": tx.get("message", "Blockchain transaction"),
+                "interaction_type": tx.get("interaction_type", "transaction")
+            })
+        
+        return {
+            "agent_id": agent_id,
+            "interactions": interactions
+        }
+    except Exception as e:
+        logger.error(f"Error getting agent interactions: {e}")
+        return {
+            "agent_id": agent_id,
+            "interactions": []
+        }
+
+@compat_router.post("/synthetic/data",
+    response_model=Dict[str, Any],
+    summary="Generate Synthetic Data (Compatibility)",
+    description="[Compatibility] Generate synthetic data."
+)
+async def generate_synthetic_data(params: Dict[str, Any], request: Request) -> Dict[str, Any]:
+    """Generate synthetic data (compatibility endpoint)."""
+    try:
+        # Map to blockchain data generation
+        num_agents = params.get("numAgents", 10)
+        num_interactions = params.get("numInteractions", 20)
+        
+        generator = DataGenerator()
+        data = generator.generate_blockchain_data(num_agents, num_interactions)
+        
+        # Store wallets and transactions
+        db = get_db(request)
+        for wallet in data["agents"]:
+            await db.store_wallet(wallet)
+        
+        for transaction in data["interactions"]:
+            await db.store_transaction(transaction)
+        
+        return {
+            "status": "success",
+            "data": data
+        }
+    except Exception as e:
+        logger.error(f"Error generating synthetic data: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@compat_router.get("/network",
+    response_model=Dict[str, Any],
+    summary="Get Network (Compatibility)",
+    description="[Compatibility] Get network data."
+)
+async def get_network(
+    request: Request,
+    node_type: Optional[str] = None,
+    time_range: Optional[str] = None
+) -> Dict[str, Any]:
+    """Get network data (compatibility endpoint)."""
+    try:
+        # Map to blockchain network
+        db = get_db(request)
+        
+        # Convert agent node_type to wallet/contract type
+        node_type_map = {
+            "Agent": "wallet",
+            "Human": "wallet",
+            "AI": "contract"
+        }
+        
+        wallet_type = node_type_map.get(node_type) if node_type else None
+        
+        # Get blockchain network data
+        network = await db.get_network_data(
+            node_type=wallet_type,
+            time_range=time_range
+        )
+        
+        return network
+    except Exception as e:
+        logger.error(f"Error getting network data: {e}")
+        return {
+            "nodes": [],
+            "edges": []
+        }
+
+@compat_router.post("/network/query",
+    response_model=Dict[str, Any],
+    summary="Query Network (Compatibility)",
+    description="[Compatibility] Query network data."
+)
+async def query_network(query: Dict[str, Any], request: Request) -> Dict[str, Any]:
+    """Query network data (compatibility endpoint)."""
+    try:
+        # Map to blockchain network query
+        db = get_db(request)
+        
+        # Convert parameters
+        network = await db.query_network(
+            node_type=query.get("node_type"),
+            relationship_type=query.get("relationship_type"),
+            start_time=query.get("start_time"),
+            end_time=query.get("end_time"),
+            agent_ids=query.get("agent_ids"),
+            limit=query.get("limit"),
+            include_properties=query.get("include_properties", True)
+        )
+        
+        return network
+    except Exception as e:
+        logger.error(f"Error querying network data: {e}")
+        raise HTTPException(status_code=422, detail=f"Invalid query parameters: {str(e)}")

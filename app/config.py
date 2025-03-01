@@ -1,7 +1,8 @@
 """Configuration module."""
 import os
 from functools import lru_cache
-from pydantic import BaseSettings
+from pydantic import BaseModel
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     """Application settings."""
@@ -13,9 +14,8 @@ class Settings(BaseSettings):
     ARANGO_USER: str = os.getenv("ARANGO_USER", "root")
     ARANGO_PASSWORD: str = os.getenv("ARANGO_PASSWORD", "password")
 
-    class Config:
-        """Pydantic config."""
-        env_file = ".env"
+    # Pydantic v2 settings configuration
+    model_config = SettingsConfigDict(env_file=".env")
 
 @lru_cache()
 def get_settings() -> Settings:

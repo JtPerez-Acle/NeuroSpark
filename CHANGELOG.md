@@ -5,6 +5,50 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.0] - Unreleased
+
+### Added
+- Web3 Integration - Phase 1: Blockchain Data Foundation
+  - Ethereum blockchain connector for data ingestion
+  - Blockchain entity data models (wallets, transactions, smart contracts, events)
+  - Transaction ingestion pipeline with filtering capabilities
+  - Enhanced ArangoDB schema for blockchain entities
+  - Graph relationship handling for blockchain transactions and contract interactions
+
+- Risk Scoring & Security Analysis
+  - Comprehensive risk scoring algorithms for wallets, transactions, and contracts
+  - Multi-factor risk assessment based on behavior patterns
+  - Risk score normalization on a 0-100 scale
+  - Detection of suspicious wallet activities
+  - Smart contract risk assessment with vulnerability tracking
+  - Alerts system for high-risk entities
+  - Database operations for risk-based entity retrieval
+
+- LLM-based Blockchain Query System
+  - Ollama integration for local LLM deployment
+  - Natural language to blockchain query translation
+  - Prompt engineering for blockchain-specific queries
+  - Response formatting for blockchain data
+
+- New API Endpoints
+  - `/blockchain/transactions` - Retrieve and query blockchain transactions
+  - `/blockchain/wallets` - Analyze wallet activities and relationships
+  - `/blockchain/contracts` - Inspect and analyze smart contracts
+  - `/blockchain/events` - Access and analyze smart contract events
+  - `/blockchain/risk` - Risk assessment and alert monitoring for blockchain entities
+
+### Changed
+- Extended existing graph models to support blockchain entities
+- Enhanced NetworkX integration with blockchain-specific algorithms
+- Improved WebSocket handler for real-time blockchain events
+- Updated Docker configuration for Ollama integration
+
+### Removed
+- Legacy agent-specific data models and operations
+- KQML message handling system (replaced with blockchain entities)
+- Scenario-based synthetic data generation (replaced with blockchain data)
+- Agent interaction tracking system
+
 ## [0.8.2] - 2025-03-01
 
 ### Added

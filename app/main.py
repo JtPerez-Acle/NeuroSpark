@@ -2,26 +2,24 @@
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, Request
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field
 from typing import Dict, Any, List, Optional
 from datetime import datetime, timezone
 import uuid
 from loguru import logger
-import random
 
 from .database import create_database
 from .monitoring.metrics import instrument_app
 from .monitoring.logging_config import setup_logging
 from .websocket_handler import ConnectionManager
-from .kqml_handler import process_interaction, generate_synthetic_interaction
 from .data_generator import DataGenerator
-from .routes import agent_router, network_router, synthetic_router, generate_router, interactions_router, admin_router
+from .routes import generate_router, admin_router, compat_router
 
 # Configure logging
 setup_logging()
 
 # Initialize FastAPI app
-app = FastAPI(title="Agent Interaction Backend")
+app = FastAPI(title="NeuroSpark: AI-Powered Blockchain Intelligence")
 
 # Add CORS middleware
 app.add_middleware(
@@ -35,21 +33,19 @@ app.add_middleware(
 # Initialize WebSocket connection manager
 manager = ConnectionManager()
 
-# Import new routers
+# Import routers
 from .graph_routes import graph_router
 from .query_routes import query_router
 from .analysis_routes import analysis_router
+from .blockchain_routes import router as blockchain_router
 
 # Add routers
-app.include_router(agent_router, prefix="/agents", tags=["agents"])
-app.include_router(network_router, prefix="/network", tags=["network"])
-app.include_router(synthetic_router, prefix="/synthetic", tags=["synthetic"])
 app.include_router(generate_router, prefix="/generate", tags=["generate"])
-app.include_router(interactions_router, prefix="/interactions", tags=["interactions"])
 app.include_router(admin_router, prefix="/admin", tags=["admin"])
 app.include_router(graph_router, prefix="/graph", tags=["graph"])
 app.include_router(query_router, prefix="/query", tags=["query"])
 app.include_router(analysis_router, prefix="/analysis", tags=["analysis"])
+app.include_router(blockchain_router)  # Blockchain routes
 
 # Initialize database
 @app.on_event("startup")
@@ -87,7 +83,9 @@ async def shutdown():
 @app.get("/")
 async def root():
     """Root endpoint."""
-    return {"message": "Agent Interaction Backend API"}
+    return {"message": "NeuroSpark: AI-Powered Blockchain Intelligence API", 
+            "version": "0.9.0",
+            "capabilities": ["Blockchain Analytics", "Smart Contract Analysis", "Risk Intelligence", "Graph Analysis"]}
 
 # Add WebSocket endpoint
 @app.websocket("/ws")

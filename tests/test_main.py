@@ -17,7 +17,11 @@ async def test_root(async_client):
     """Test root endpoint."""
     response = await async_client.get("/")
     assert response.status_code == 200
-    assert response.json() == {"message": "Agent Interaction Backend API"}
+    response_data = response.json()
+    assert response_data["message"] == "NeuroSpark: AI-Powered Blockchain Intelligence API"
+    assert "version" in response_data
+    assert "capabilities" in response_data
+    assert isinstance(response_data["capabilities"], list)
 
 @pytest.mark.asyncio
 async def test_agent_message(async_client):

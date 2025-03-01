@@ -1,4 +1,4 @@
-"""Tests for data generator module."""
+"""Tests for blockchain data generator module."""
 import pytest
 from datetime import datetime
 from unittest.mock import patch, MagicMock
@@ -7,119 +7,85 @@ import os
 
 # Mock the logging before importing the module
 with patch('app.monitoring.logging_config.setup_logging', MagicMock()):
-    from app.data_generator import DataGenerator, PDScenarioGenerator, PPScenarioGenerator, PEScenarioGenerator, SARScenarioGenerator
+    from app.data_generator import DataGenerator, BlockchainScenarioGenerator
 
-class TestDataGenerator:
-    """Test cases for DataGenerator class."""
+class TestBlockchainDataGenerator:
+    """Test cases for blockchain data generator."""
 
     def setup_method(self):
         """Set up test cases."""
         self.generator = DataGenerator()
+        self.scenario_generator = BlockchainScenarioGenerator()
 
-    def test_create_agent_profile(self):
-        """Test creating a single agent profile."""
+    def test_create_wallet(self):
+        """Test creating a single wallet."""
         # Test with specific type and role
-        profile = self.generator.create_agent_profile("sensor", "temperature")
-        assert profile["type"] == "sensor"
-        assert profile["role"] == "temperature"
-        assert "created_at" in profile
-        assert isinstance(profile["id"], str)
+        wallet = self.generator.create_wallet("EOA", "trader")
+        assert wallet["type"] == "EOA"
+        assert wallet["role"] == "trader"
+        assert "address" in wallet
+        assert wallet["address"].startswith("0x")
+        assert "created_at" in wallet
+        assert "chain" in wallet
+        assert wallet["chain"] == "ethereum"
         
-        # Test with random type and role
-        profile = self.generator.create_agent_profile()
-        assert profile["type"] in self.generator.agent_types
-        assert profile["role"] in self.generator.agent_types[profile["type"]]
-
-    def test_create_agent_profiles(self):
-        """Test creating multiple agent profiles."""
-        num_agents = 3
-        profiles = self.generator.create_agent_profiles(num_agents)
+        # Test contract wallet
+        contract = self.generator.create_wallet("contract", "dex")
+        assert contract["type"] == "contract"
+        assert contract["role"] == "dex"
+        assert "address" in contract
+        assert "verified" in contract
+        assert "creation_tx" in contract
+        assert "creation_block" in contract
         
-        assert len(profiles) == num_agents
-        for profile in profiles:
-            assert "id" in profile
-            assert "type" in profile
-            assert "role" in profile
-            assert "created_at" in profile
+        # Test with random type
+        random_wallet = self.generator.create_wallet()
+        assert random_wallet["type"] in ["EOA", "contract"]
+        assert "role" in random_wallet
+        assert "address" in random_wallet
 
-    def test_generate_content_by_type(self):
-        """Test content generation for different agent types."""
-        # Test sensor content
-        content = self.generator.generate_content_by_type("sensor", "temperature")
-        assert "reading" in content
-        assert "temperature" in content
-        assert "celsius" in content
-        assert "timestamp" in content
-
-        # Test analyzer content
-        content = self.generator.generate_content_by_type("analyzer", "pattern")
-        assert "analysis" in content
-        assert "status" in content
-        assert "confidence" in content
-        assert "timestamp" in content
-
-        # Test coordinator content
-        content = self.generator.generate_content_by_type("coordinator", "system")
-        assert "command" in content
-        assert "action" in content
-        assert "priority" in content
-        assert "timestamp" in content
-
-        # Test actuator content
-        content = self.generator.generate_content_by_type("actuator", "hvac")
-        assert "status" in content
-        assert "action_status" in content
-        assert "timestamp" in content
-
-    def test_generate_interaction(self):
-        """Test generating an interaction between agents."""
-        sender = self.generator.create_agent_profile("sensor", "temperature")
-        receiver = self.generator.create_agent_profile("analyzer", "pattern")
+    def test_create_wallets(self):
+        """Test creating multiple wallets."""
+        num_wallets = 3
+        wallets = self.generator.create_wallets(num_wallets)
         
-        interaction = self.generator.generate_interaction(sender, receiver)
-        
-        assert "interaction_id" in interaction
-        assert "sender_id" in interaction
-        assert "receiver_id" in interaction
-        assert "topic" in interaction
-        assert "message" in interaction
-        assert "interaction_type" in interaction
-        assert "timestamp" in interaction
-        assert "metadata" in interaction
+        assert len(wallets) == num_wallets
+        for wallet in wallets:
+            assert "address" in wallet
+            assert "type" in wallet
+            assert "role" in wallet
+            assert "created_at" in wallet
+            assert "chain" in wallet
+            assert wallet["chain"] == "ethereum"
 
-    def test_get_interaction_type_by_agent(self):
-        """Test getting interaction types for different agent types."""
-        sensor_type = self.generator.get_interaction_type_by_agent("sensor")
-        assert sensor_type in ["report", "notification", "update"]
-        
-        analyzer_type = self.generator.get_interaction_type_by_agent("analyzer")
-        assert analyzer_type in ["query", "report", "alert"]
-        
-        coordinator_type = self.generator.get_interaction_type_by_agent("coordinator")
-        assert coordinator_type in ["command", "request", "broadcast"]
-        
-        actuator_type = self.generator.get_interaction_type_by_agent("actuator")
-        assert actuator_type in ["response", "update", "notification"]
-
-    def test_generate_synthetic_data(self):
-        """Test generating a complete synthetic dataset."""
-        num_agents = 3
-        num_interactions = 5
-        data = self.generator.generate_synthetic_data(num_agents, num_interactions)
+    def test_generate_blockchain_data(self):
+        """Test generating a complete blockchain dataset."""
+        num_wallets = 5
+        num_transactions = 10
+        data = self.generator.generate_blockchain_data(num_wallets, num_transactions)
         
         assert "agents" in data
         assert "interactions" in data
-        assert len(data["agents"]) == num_agents
-        assert len(data["interactions"]) == num_interactions
+        assert "run_id" in data
+        assert "scenario" in data
+        assert "blockchain" in data
+        assert "start_block" in data
+        assert "end_block" in data
+        assert data["blockchain"] == "ethereum"
+        assert len(data["agents"]) == num_wallets
+        assert len(data["interactions"]) == num_transactions
         
-        # Verify agent structure
+        # Verify wallet structure
         for agent in data["agents"]:
             assert "id" in agent
+            assert "address" in agent
             assert "type" in agent
             assert "role" in agent
+            assert "chain" in agent
+            assert "tags" in agent
             assert "created_at" in agent
         
-        # Verify interaction structure
+        # Verify transaction structure
         for interaction in data["interactions"]:
             assert "interaction_id" in interaction
             assert "sender_id" in interaction
@@ -129,87 +95,148 @@ class TestDataGenerator:
             assert "interaction_type" in interaction
             assert "timestamp" in interaction
             assert "metadata" in interaction
+            assert "transaction" in interaction["metadata"]
+            assert "blockchain" in interaction["metadata"]
+            assert interaction["metadata"]["blockchain"] == "ethereum"
             
+            # Check transaction fields
+            tx = interaction["metadata"]["transaction"]
+            assert "hash" in tx
+            assert "block_number" in tx
+            assert "timestamp" in tx
+            assert "from_address" in tx
+            assert "to_address" in tx
+            assert "gas_price" in tx
+            assert "gas_used" in tx
+            assert "status" in tx
+            assert "chain" in tx
+            assert tx["chain"] == "ethereum"
+
     def test_scenario_generator_init(self):
         """Test initializing generator with a scenario."""
         # Test each scenario type
-        generator_pd = DataGenerator(scenario="pd")
-        assert generator_pd.scenario == "pd"
-        assert generator_pd.scenario_generator is not None
+        generator_dex = DataGenerator(scenario="dex")
+        assert generator_dex.scenario == "dex"
+        assert generator_dex.scenario_generator is not None
         
-        generator_pp = DataGenerator(scenario="predator_prey")
-        assert generator_pp.scenario == "predator_prey"
-        assert generator_pp.scenario_generator is not None
+        generator_lending = DataGenerator(scenario="lending")
+        assert generator_lending.scenario == "lending"
+        assert generator_lending.scenario_generator is not None
         
-        generator_pe = DataGenerator(scenario="pursuer_evader")
-        assert generator_pe.scenario == "pursuer_evader"
-        assert generator_pe.scenario_generator is not None
+        generator_nft = DataGenerator(scenario="nft")
+        assert generator_nft.scenario == "nft"
+        assert generator_nft.scenario_generator is not None
         
-        generator_sar = DataGenerator(scenario="search_rescue")
-        assert generator_sar.scenario == "search_rescue"
-        assert generator_sar.scenario_generator is not None
+        generator_token = DataGenerator(scenario="token_transfer")
+        assert generator_token.scenario == "token_transfer"
+        assert generator_token.scenario_generator is not None
         
         # Test invalid scenario
         generator_invalid = DataGenerator(scenario="invalid")
-        assert generator_invalid.scenario == "invalid"
-        assert generator_invalid.scenario_generator is None
+        assert generator_invalid.scenario == "token_transfer"  # Default
+        assert generator_invalid.scenario_generator is not None
+
+    def test_blockchain_dex_scenario(self):
+        """Test DEX scenario generation."""
+        generator = DataGenerator(scenario="dex")
+        data = generator.generate_blockchain_data(10, 15)
         
-    def test_generate_scenario_data(self):
-        """Test generating scenario-based data."""
-        # Test Prisoners' Dilemma scenario
-        generator = DataGenerator(scenario="pd")
-        data = generator.generate_scenario_data(5, 10, rounds=3)
+        assert data["scenario"] == "dex"
         
-        assert "agents" in data
-        assert "interactions" in data
-        assert "run_id" in data
-        assert "scenario" in data
-        assert data["scenario"] == "prisoners_dilemma"
-        assert len(data["agents"]) == 5
-        assert len(data["interactions"]) <= 10  # May be less due to round limits
+        # Verify agents include DEX contracts
+        dex_contracts = [a for a in data["agents"] if a["type"] == "contract" and a["role"] == "dex"]
+        assert len(dex_contracts) > 0
         
-        # Check agent structure
-        for agent in data["agents"]:
-            assert agent["type"] == "prisoner"
-            assert agent["role"] in ["cooperator", "defector", "tit_for_tat", "random"]
-            assert "strategy" in agent
-            assert "score" in agent
-            assert "history" in agent
-            
-        # Check interaction structure
-        for interaction in data["interactions"]:
-            assert interaction["interaction_type"] in ["cooperate", "defect"]
-            assert "metadata" in interaction
-            assert "scenario" in interaction["metadata"]
-            assert "round" in interaction["metadata"]
-            assert "sender_decision" in interaction["metadata"]
-            assert "receiver_decision" in interaction["metadata"]
-            
-    def test_scenario_generators(self):
-        """Test each scenario generator directly."""
-        # Test Prisoners' Dilemma scenario generator
-        pd_generator = PDScenarioGenerator()
-        pd_data = pd_generator.generate_data(3, 10, rounds=2)
-        assert len(pd_data["agents"]) == 3
-        assert pd_data["scenario"] == "prisoners_dilemma"
+        # Verify we have interactions related to DEX
+        dex_interactions = [i for i in data["interactions"] 
+                           if i["interaction_type"] in ["swap", "add_liquidity", "remove_liquidity"]]
+        assert len(dex_interactions) > 0
+
+    def test_blockchain_lending_scenario(self):
+        """Test lending scenario generation."""
+        generator = DataGenerator(scenario="lending")
+        data = generator.generate_blockchain_data(10, 15)
         
-        # Test Predator/Prey scenario generator
-        pp_generator = PPScenarioGenerator()
-        pp_data = pp_generator.generate_data(9, 5)  # 3 predators, 6 prey
-        assert len(pp_data["agents"]) == 9
-        assert len(pp_data["interactions"]) == 5
-        assert pp_data["scenario"] == "predator_prey"
+        assert data["scenario"] == "lending"
         
-        # Test Pursuer/Evader scenario generator
-        pe_generator = PEScenarioGenerator()
-        pe_data = pe_generator.generate_data(6, 8, time_steps=4)  # 2 pursuers, 4 evaders
-        assert len(pe_data["agents"]) == 6
-        assert len(pe_data["interactions"]) <= 8
-        assert pe_data["scenario"] == "pursuer_evader"
+        # Verify agents include lending contracts
+        lending_contracts = [a for a in data["agents"] if a["type"] == "contract" and a["role"] == "lending"]
+        assert len(lending_contracts) > 0
         
-        # Test Search and Rescue scenario generator
-        sar_generator = SARScenarioGenerator()
-        sar_data = sar_generator.generate_data(10, 12)  # Mixture of searchers, coordinators, victims
-        assert len(sar_data["agents"]) == 10
-        assert len(sar_data["interactions"]) == 12
-        assert sar_data["scenario"] == "search_rescue"
+        # Verify we have interactions related to lending
+        lending_interactions = [i for i in data["interactions"] 
+                               if i["interaction_type"] in ["deposit", "withdraw", "borrow", "repay"]]
+        assert len(lending_interactions) > 0
+
+    def test_generate_transaction(self):
+        """Test generating a transaction between wallets."""
+        sender = self.generator.create_wallet("EOA", "trader")
+        receiver = self.generator.create_wallet("contract", "token")
+        
+        transaction = self.generator.generate_transaction(sender, receiver, scenario="token_transfer")
+        
+        assert "interaction_id" in transaction
+        assert "sender_id" in transaction
+        assert "receiver_id" in transaction
+        assert transaction["sender_id"] == sender["id"]
+        assert transaction["receiver_id"] == receiver["id"]
+        assert "topic" in transaction and "ethereum" in transaction["topic"]
+        assert "message" in transaction
+        assert "interaction_type" in transaction
+        assert "timestamp" in transaction
+        assert "metadata" in transaction
+        assert "transaction" in transaction["metadata"]
+        assert "token_symbol" in transaction["metadata"]
+        assert "token_amount" in transaction["metadata"]
+        assert "blockchain" in transaction["metadata"]
+        assert transaction["metadata"]["blockchain"] == "ethereum"
+
+    def test_blockchain_helper_functions(self):
+        """Test blockchain helper functions."""
+        # Test address generation
+        eth_address = self.scenario_generator._generate_eth_address()
+        assert eth_address.startswith("0x")
+        assert len(eth_address) == 42  # 0x + 40 hex chars
+        
+        # Test transaction hash generation
+        tx_hash = self.scenario_generator._generate_tx_hash()
+        assert tx_hash.startswith("0x")
+        assert len(tx_hash) == 66  # 0x + 64 hex chars
+        
+        # Test block hash generation
+        block_hash = self.scenario_generator._generate_block_hash()
+        assert block_hash.startswith("0x")
+        assert len(block_hash) == 66  # 0x + 64 hex chars
+        
+        # Test token amount generation
+        token_amount = self.scenario_generator._generate_token_amount("ETH")
+        assert isinstance(token_amount, int)
+        assert token_amount > 0
+        
+        # Test gas params generation
+        gas_price, gas_limit, gas_used = self.scenario_generator._generate_gas_params()
+        assert isinstance(gas_price, int)
+        assert isinstance(gas_limit, int)
+        assert isinstance(gas_used, int)
+        assert gas_price > 0
+        assert gas_limit > 0
+        assert gas_used > 0
+        assert gas_used <= gas_limit
+        
+        # Test blockchain advancement
+        initial_block = self.scenario_generator.current_block
+        initial_time = self.scenario_generator.current_time
+        self.scenario_generator._advance_blockchain()
+        assert self.scenario_generator.current_block == initial_block + 1
+        assert (self.scenario_generator.current_time - initial_time).total_seconds() == self.scenario_generator.block_time
+
+    def test_get_available_scenarios(self):
+        """Test getting available blockchain scenarios."""
+        scenarios = self.generator.get_available_scenarios()
+        
+        assert isinstance(scenarios, dict)
+        assert "dex" in scenarios
+        assert "lending" in scenarios
+        assert "nft" in scenarios
+        assert "token_transfer" in scenarios
+        assert len(scenarios) >= 4
