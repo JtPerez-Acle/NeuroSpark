@@ -105,9 +105,33 @@ class NetworkOperations(BaseOperations):
         if filters is None:
             filters = {}
         
+        # Check if blockchain collections exist and initialize them if needed
+        collections = ['wallets', 'transactions', 'contracts', 'events', 'alerts', 
+                      'wallet_to_wallet', 'wallet_to_contract', 'contract_to_contract', 'entity_to_alert']
+        
+        missing_collections = [c for c in collections if not self._db.has_collection(c)]
+        if missing_collections:
+            # Collections need to be created first
+            await self.setup_blockchain_collections()
+        
         # Build AQL query based on filters
         query_parts = []
         bind_vars = {}
+        
+        # Start with a safe return structure in case there's no data
+        query_parts.append("""
+        // Initialize return structure
+        LET empty_result = {
+            "nodes": [],
+            "edges": []
+        }
+        """)
+        
+        # Check if wallets collection exists and has data
+        query_parts.append("""
+        LET wallet_exists = LENGTH(FOR doc IN wallets LIMIT 1 RETURN doc) > 0
+        LET contract_exists = LENGTH(FOR doc IN contracts LIMIT 1 RETURN doc) > 0
+        """)
         
         # Query wallet nodes first, then contract nodes, and combine them
         query_parts.append("""
@@ -164,7 +188,7 @@ class NetworkOperations(BaseOperations):
         LET nodes = APPEND(wallet_nodes, contract_nodes)
         """)
         
-        # Start edges query (transactions as wallet-to-wallet)
+        # Start edges query (transactions as wallet-to-wallet) with existence check
         query_parts.append("""
         LET wallet_edges = (
             FOR edge IN wallet_to_wallet
@@ -189,19 +213,17 @@ class NetworkOperations(BaseOperations):
         
         if 'addresses' in filters and filters['addresses']:
             query_parts.append("""
-            LET from_wallet = DOCUMENT(edge._from)
-            LET to_wallet = DOCUMENT(edge._to)
+            LET from_wallet = DOCUMENT(CONCAT('wallets/', edge._from))
+            LET to_wallet = DOCUMENT(CONCAT('wallets/', edge._to))
             FILTER from_wallet.address IN @addresses OR to_wallet.address IN @addresses
             """)
             bind_vars['addresses'] = filters['addresses']
         
         # Complete wallet edges query
         query_parts.append("""
-            LET from_wallet = DOCUMENT(edge._from)
-            LET to_wallet = DOCUMENT(edge._to)
             RETURN {
-                source: from_wallet.address,
-                target: to_wallet.address,
+                source: DOCUMENT(edge._from).address,
+                target: DOCUMENT(edge._to).address,
                 type: "transaction",
                 tx_hash: edge.hash,
                 value: edge.value,
@@ -211,7 +233,7 @@ class NetworkOperations(BaseOperations):
         )
         """)
         
-        # Add wallet-to-contract edges
+        # Add wallet-to-contract edges with existence check
         query_parts.append("""
         LET contract_edges = (
             FOR edge IN wallet_to_contract
@@ -229,18 +251,16 @@ class NetworkOperations(BaseOperations):
         
         if 'addresses' in filters and filters['addresses']:
             query_parts.append("""
-            LET wallet = DOCUMENT(edge._from)
-            LET contract = DOCUMENT(edge._to)
+            LET wallet = DOCUMENT(CONCAT('wallets/', edge._from))
+            LET contract = DOCUMENT(CONCAT('contracts/', edge._to))
             FILTER wallet.address IN @addresses OR contract.address IN @addresses
             """)
         
         # Complete contract edges query
         query_parts.append("""
-            LET wallet = DOCUMENT(edge._from)
-            LET contract = DOCUMENT(edge._to)
             RETURN {
-                source: wallet.address,
-                target: contract.address,
+                source: DOCUMENT(edge._from).address,
+                target: DOCUMENT(edge._to).address,
                 type: "interaction",
                 relationship: edge.relationship,
                 timestamp: edge.timestamp,
@@ -251,18 +271,26 @@ class NetworkOperations(BaseOperations):
         
         # Return combined results
         query_parts.append("""
-        RETURN {
-            nodes: nodes,
-            edges: APPEND(wallet_edges, contract_edges)
-        }
+        // Return the result only if we have data, otherwise return empty structure
+        RETURN LENGTH(nodes) > 0 ? 
+          {
+              nodes: nodes,
+              edges: APPEND(wallet_edges, contract_edges)
+          }
+        : empty_result
         """)
         
-        # Execute the query
-        query = "\n".join(query_parts)
-        cursor = self._db.aql.execute(query, bind_vars=bind_vars)
-        result = next(cursor)
-        
-        return result
+        try:
+            # Execute the query
+            query = "\n".join(query_parts)
+            cursor = self._db.aql.execute(query, bind_vars=bind_vars)
+            result = next(cursor)
+            
+            return result
+        except Exception as e:
+            # Log error and return empty response
+            logger.error(f"Error in get_blockchain_network: {e}")
+            return {"nodes": [], "edges": []}
     
     async def get_network_data(self, node_type: Optional[str] = None, time_range: Optional[str] = None) -> Dict[str, Any]:
         """Get network data from the database with optional filters.

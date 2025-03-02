@@ -13,7 +13,7 @@ from .monitoring.metrics import instrument_app
 from .monitoring.logging_config import setup_logging
 from .websocket_handler import ConnectionManager
 from .data_generator import DataGenerator
-from .routes import generate_router, admin_router, compat_router
+from .routes import generate_router, admin_router
 
 # Configure logging
 setup_logging()
@@ -39,13 +39,29 @@ from .query_routes import query_router
 from .analysis_routes import analysis_router
 from .blockchain_routes import router as blockchain_router
 
-# Add routers
+# Add routers with dependencies
 app.include_router(generate_router, prefix="/generate", tags=["generate"])
 app.include_router(admin_router, prefix="/admin", tags=["admin"])
 app.include_router(graph_router, prefix="/graph", tags=["graph"])
 app.include_router(query_router, prefix="/query", tags=["query"])
 app.include_router(analysis_router, prefix="/analysis", tags=["analysis"])
-app.include_router(blockchain_router)  # Blockchain routes
+
+# Legacy compatibility endpoints removed
+
+# Custom setup for blockchain routes (ensure collections exist)
+@app.on_event("startup")
+async def setup_blockchain():
+    """Initialize blockchain collections."""
+    try:
+        db = await create_database()
+        await db.setup_blockchain_collections()
+        await db.disconnect()
+        logger.info("Successfully initialized blockchain collections")
+    except Exception as e:
+        logger.error(f"Failed to initialize blockchain collections: {e}")
+
+# Include blockchain routes
+app.include_router(blockchain_router)
 
 # Initialize database
 @app.on_event("startup")

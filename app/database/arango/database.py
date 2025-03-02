@@ -147,6 +147,39 @@ class ArangoDatabase(DatabaseInterface):
             await self.connect()
         
         return await self._wallet_ops.get_wallet(address, chain)
+    
+    async def get_wallets_by_query(self, query: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """Get wallets by query filter.
+        
+        Args:
+            query: Dictionary of query filters (key-value pairs)
+            
+        Returns:
+            List of wallet dictionaries matching the query
+        """
+        if not self.is_connected():
+            await self.connect()
+        
+        # Build AQL query
+        aql_parts = ["FOR w IN wallets"]
+        bind_vars = {}
+        
+        # Add filters
+        filters = []
+        for key, value in query.items():
+            filters.append(f"w.{key} == @{key}")
+            bind_vars[key] = value
+        
+        if filters:
+            aql_parts.append("FILTER " + " AND ".join(filters))
+        
+        aql_parts.append("RETURN UNSET(w, '_id', '_key', '_rev')")
+        
+        aql_query = " ".join(aql_parts)
+        
+        # Execute query
+        cursor = self._db.aql.execute(aql_query, bind_vars=bind_vars)
+        return [doc for doc in cursor]
             
     async def get_wallet_by_risk(self, min_risk_score: float = 75.0, limit: int = 10) -> List[Dict[str, Any]]:
         """Get high-risk wallets from the database.
