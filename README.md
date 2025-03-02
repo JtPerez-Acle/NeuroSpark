@@ -1,53 +1,59 @@
-# NeuroSpark v0.9.0 (Unreleased)
+# NeuroSpark v0.9.0
 
 An AI-Powered Blockchain Intelligence System for analyzing smart contracts, monitoring blockchain activities, and providing real-time Web3 security insights with advanced graph analytics.
 
-## 🌟 New in v0.9.0: Blockchain Intelligence & Risk Analysis
+## 🌟 Introducing NeuroSpark 0.9.0: Comprehensive Blockchain Intelligence
 
-This release transforms the platform into a comprehensive blockchain intelligence system:
+The latest version completely transforms the platform into a powerful blockchain intelligence system:
 
-- **Web3 Data Integration**: Ingest and model data from multiple blockchain networks (Ethereum, Solana)
-- **Blockchain Entity Models**: Track and analyze wallets, transactions, smart contracts, and events
-- **Risk Intelligence System**: Multi-factor risk scoring for all blockchain entities
-- **Smart Contract Analysis**: Security vulnerability detection for smart contract code
-- **Real-time Monitoring**: Detect and alert on suspicious blockchain activities
-- **LLM-Powered Queries**: Natural language interface for blockchain data analysis
-- **Enhanced Graph Analytics**: Specialized algorithms for blockchain transaction flow analysis
+- **Multi-Chain Web3 Data Integration**: Seamlessly ingest and model data from Ethereum and other blockchain networks with our high-performance connectors
+- **Complete Blockchain Entity Modeling**: Comprehensive tracking and analysis of wallets, transactions, smart contracts, and events in a unified data model
+- **Advanced Risk Intelligence**: Sophisticated multi-factor risk scoring for all blockchain entities using behavioral pattern analysis
+- **Smart Contract Security Analysis**: Robust vulnerability detection and risk assessment for smart contract code with detailed reports
+- **Real-time Blockchain Monitoring**: Instant detection and alerting for suspicious blockchain activities through our WebSocket-based alert system
+- **LLM-Powered Natural Language Queries**: Intuitive natural language interface for complex blockchain data analysis powered by Ollama integration
+- **Blockchain-Specific Graph Analytics**: Specialized algorithms designed specifically for blockchain transaction flow analysis and network visualization
 
 ## Core Features
 
 - **Blockchain Integration & Analysis**:
-  - Multi-chain support with connectors for Ethereum and Solana
-  - Comprehensive entity models for wallets, transactions, contracts, and events
-  - Graph-based approach to blockchain data for relationship analysis
-  - Automatic risk scoring based on multiple risk factors
-  - Real-time monitoring and alerts for suspicious activities
+  - **Multi-chain Support**: Connectors for Ethereum (primary) with extensible architecture for Solana and other chains
+  - **Comprehensive Entity Models**: Complete data models for wallets, transactions, contracts, and events with rich metadata
+  - **Graph-based Blockchain Analysis**: Advanced relationship modeling to uncover connections between blockchain entities
+  - **Risk Intelligence Engine**: Sophisticated multi-factor risk scoring system with behavioral pattern analysis
+  - **Real-time Monitoring System**: WebSocket-based alerting for immediate notification of suspicious blockchain activities
+  - **Smart Contract Security**: Vulnerability detection and risk assessment for deployed smart contracts
 
-- **Advanced Graph Analytics**:
-  - NetworkX integration for blockchain transaction flow analysis
-  - Node centrality metrics to identify key entities in transaction networks
-  - Community detection to discover related wallet clusters
-  - Temporal analysis to track changes in blockchain behavior over time
-  - Visualization layouts optimized for blockchain network display
+- **Advanced Graph Analytics for Blockchain**:
+  - **Transaction Flow Analysis**: Follow the money through complex transaction paths with NetworkX integration
+  - **Entity Importance Measurement**: Multiple centrality algorithms to identify key wallets and contracts in the network
+  - **Relationship Cluster Detection**: Advanced community detection to discover related entity groups
+  - **Temporal Blockchain Analysis**: Track changes in network structure and entity behavior over time periods
+  - **Anomaly Detection**: Identify unusual patterns and outliers in transaction networks
+  - **Specialized Visualization**: Optimized layouts for complex blockchain relationship visualization
 
 - **LLM-Powered Natural Language Interface**:
-  - Query blockchain data using natural language
-  - Integrated with Ollama for local LLM deployment
-  - Specialized prompt templates for blockchain-specific queries
-  - Context-aware responses with relevant transaction data
+  - **Intuitive Query System**: Query complex blockchain data using simple natural language instructions
+  - **Ollama Integration**: Efficient local LLM deployment with optimized performance
+  - **Blockchain-Specific Prompt Engineering**: Custom templates designed for different types of blockchain analysis
+  - **Context-Aware Response Generation**: Rich, informative responses with relevant blockchain context
+  - **Query Translation**: Automatic conversion of natural language to optimized database queries
+  - **Explainable Results**: Clear explanations of blockchain terminology and significance of findings
 
 - **Synthetic Blockchain Data Generation**:
-  - Generate realistic blockchain transaction patterns
-  - Simulate various DeFi scenarios (DEX trades, lending, NFT markets)
-  - Create test environments with known vulnerabilities for security research
-  - Model normal and suspicious transaction patterns for risk testing
+  - **Realistic Blockchain Patterns**: Generate statistically accurate transaction patterns based on real-world data
+  - **DeFi Scenario Simulation**: Model specialized scenarios including DEX trades, lending protocols, and NFT markets
+  - **Security Testing Environment**: Create test datasets with known vulnerabilities for security research
+  - **Behavioral Pattern Modeling**: Simulate both normal and suspicious transaction patterns for risk testing
+  - **Configurable Parameters**: Extensive customization options for all aspects of synthetic data generation
 
-- **Robust Infrastructure**:
-  - FastAPI backend with async/await pattern for high performance
-  - WebSocket support for real-time blockchain event notifications
-  - ArangoDB graph database for efficient blockchain data storage
-  - Comprehensive test suite with 75+ tests and >50% code coverage
-  - Docker-based deployment with monitoring stack (Prometheus/Grafana)
+- **Enterprise-grade Infrastructure**:
+  - **High-performance Backend**: FastAPI with async/await pattern for optimal throughput and responsiveness
+  - **Real-time Event System**: WebSocket support for instant blockchain event notifications
+  - **Optimized Graph Database**: ArangoDB with specialized indexes for efficient blockchain data querying
+  - **Comprehensive Test Coverage**: Extensive test suite with 80+ tests and continuous integration
+  - **Observability Stack**: Complete monitoring with Prometheus/Grafana dashboards
+  - **Docker-based Deployment**: Simple deployment with containerized components including LLM integration
 
 ## System Architecture
 
@@ -388,44 +394,50 @@ sequenceDiagram
 
 ### Blockchain Data Endpoints
 
-- `/blockchain/wallets/{address}` - Get wallet information
-- `/blockchain/wallets/{address}/transactions` - Get wallet transactions
-- `/blockchain/wallets/{address}/contracts` - Get contracts deployed or interacted with
-- `/blockchain/transactions/{tx_hash}` - Get transaction details
-- `/blockchain/contracts/{address}` - Get contract information
-- `/blockchain/contracts/{address}/events` - Get contract events
-- `/blockchain/contracts/{address}/audit` - Get contract security audit
+- `GET /blockchain/wallets/{address}` - Get detailed wallet information including balance, transaction history, and risk assessment
+- `GET /blockchain/wallets/{address}/transactions` - Get all transactions involving a specific wallet with pagination and filtering
+- `GET /blockchain/wallets/{address}/contracts` - Get all contracts deployed by or interacted with by a specific wallet
+- `GET /blockchain/transactions/{tx_hash}` - Get comprehensive transaction details including receipt and event logs
+- `GET /blockchain/contracts/{address}` - Get contract information with metadata and security assessment
+- `GET /blockchain/contracts/{address}/events` - Get all events emitted by a specific contract with filtering options
+- `GET /blockchain/contracts/{address}/audit` - Get detailed security audit report for a smart contract
+- `POST /blockchain/wallets/batch` - Retrieve detailed information for multiple wallets in a single request
+- `POST /blockchain/transactions/batch` - Retrieve detailed information for multiple transactions in a single request
 
 ### Risk Intelligence Endpoints
 
-- `/blockchain/risk/{entity_type}` - Get high-risk entities (wallets, transactions, contracts)
-- `/blockchain/risk/alerts` - Get active security alerts
-- `/blockchain/risk/analyze` - Perform comprehensive risk analysis
-- `/blockchain/risk/suspicious` - Get suspicious activities
+- `GET /blockchain/risk/{entity_type}` - Get high-risk entities by type (wallets, transactions, contracts) with customizable risk thresholds
+- `GET /blockchain/risk/alerts` - Get active security alerts with severity classification and context
+- `POST /blockchain/risk/analyze` - Perform comprehensive risk analysis on any blockchain entity with detailed reports
+- `GET /blockchain/risk/suspicious` - Get suspicious activities detected in recent blockchain transactions
+- `GET /blockchain/risk/overview` - Get aggregated risk metrics across the monitored blockchain ecosystem
 
 ### Network Graph Endpoints
 
-- `/blockchain/network` - Get blockchain network visualization data
-- `/blockchain/network/query` - Query blockchain network with complex filters
+- `GET /blockchain/network` - Get blockchain network visualization data with configurable depth and entity types
+- `POST /blockchain/network/query` - Query blockchain network with complex filters and relationship criteria
+- `GET /blockchain/network/clusters` - Get pre-identified relationship clusters among blockchain entities
 
 ### Natural Language Query Endpoints
 
-- `/blockchain/query/natural` - LLM-powered natural language blockchain queries
-- `/blockchain/query/trace` - Trace transaction paths through entities
-- `/blockchain/query/pattern` - Identify transaction patterns
+- `POST /blockchain/query/natural` - Execute LLM-powered natural language blockchain queries with context awareness
+- `POST /blockchain/query/trace` - Trace transaction paths between blockchain entities with customizable depth
+- `POST /blockchain/query/pattern` - Identify specific transaction patterns among blockchain entities
 
 ### Analytics Endpoints
 
-- `/analysis/metrics` - Get blockchain network metrics
-- `/analysis/centrality` - Calculate key entities in blockchain network
-- `/analysis/communities` - Detect related entity clusters
-- `/analysis/flow` - Analyze value flow through the network
-- `/analysis/visualization` - Get enhanced network visualization
+- `GET /analysis/metrics` - Get comprehensive blockchain network metrics with statistical analysis
+- `GET /analysis/centrality` - Calculate key influential entities in the blockchain network using multiple centrality algorithms
+- `GET /analysis/communities` - Detect and analyze relationship clusters within the blockchain network
+- `GET /analysis/flow` - Analyze value flow and circulation patterns through the network
+- `GET /analysis/temporal` - Analyze blockchain network metrics across different time periods
+- `GET /analysis/visualization` - Get enhanced network visualization with integrated metrics and highlights
 
 ### Data Generation Endpoints
 
-- `/generate/data` - Generate synthetic blockchain data
-- `/generate/scenario` - Generate blockchain scenario-based data
+- `POST /generate/data` - Generate realistic synthetic blockchain data with configurable parameters
+- `POST /generate/scenario` - Generate scenario-based blockchain data for specific use cases (DEX, lending, NFT, etc.)
+- `POST /generate/transaction` - Generate a single synthetic blockchain transaction
 
 For detailed information about all available endpoints, request/response formats, and examples, please refer to the [API_ENDPOINTS.md](./API_ENDPOINTS.md) file or visit the interactive API documentation at [`http://localhost:8000/docs`](http://localhost:8000/docs) when the server is running.
 
@@ -440,8 +452,8 @@ For detailed information about all available endpoints, request/response formats
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/JtPerez-Acle/agent-interaction-backend
-cd agent-interaction-backend
+git clone https://github.com/JtPerez-Acle/neurospark
+cd neurospark
 ```
 
 2. Choose one of the following startup methods:
@@ -611,55 +623,58 @@ The Frontend will be available at:
 ## API Endpoints
 
 ### Root Endpoint
-- `GET /` - Get API information
+- `GET /` - Get API information and capabilities
 
-### Interaction Management
-- `POST /interactions` - Create a new interaction
-- `GET /interactions` - Get all interactions with optional filtering
-- `GET /interactions/{interaction_id}` - Get a specific interaction
+### Blockchain Data Endpoints
+- `GET /blockchain/wallets/{address}` - Get detailed wallet information
+- `GET /blockchain/wallets/{address}/transactions` - Get wallet transactions
+- `GET /blockchain/wallets/{address}/contracts` - Get contracts deployed or interacted with
+- `GET /blockchain/wallets/batch` - Retrieve multiple wallets in a single request
+- `GET /blockchain/transactions/{hash}` - Get transaction details
+- `GET /blockchain/transactions/filter` - Filter transactions by criteria
+- `POST /blockchain/transactions/batch` - Retrieve multiple transactions
+- `GET /blockchain/contracts/{address}` - Get contract information
+- `GET /blockchain/contracts/{address}/events` - Get contract events
+- `GET /blockchain/contracts/{address}/audit` - Get contract security audit
+- `GET /blockchain/events/filter` - Filter events by criteria
+- `POST /blockchain/events/decode` - Decode event data
 
-### Agent Management
-- `POST /agents` - Create a new agent
-- `GET /agents` - Get all agents
-- `POST /agents/interaction` - Store an agent interaction
-- `GET /agents/{agent_id}/interactions` - Get all interactions for a specific agent
-- `GET /agents/{agent_id}/runs` - Get all runs for a specific agent
-- `GET /agents/stats` - Get agent statistics
+### Risk Intelligence Endpoints
+- `GET /blockchain/risk/{entity_type}` - Get high-risk entities by type
+- `GET /blockchain/risk/alerts` - Get active security alerts
+- `POST /blockchain/risk/analyze` - Perform comprehensive risk analysis
+- `GET /blockchain/risk/suspicious` - Get suspicious activities
+- `GET /blockchain/risk/overview` - Get risk metrics and statistics
 
-### Network Operations
-- `GET /network` - Get network graph data with optional filtering
-- `POST /network/query` - Query network graph with specific filters
+### Blockchain Network Analysis
+- `GET /blockchain/network` - Get blockchain network visualization data
+- `POST /blockchain/network/query` - Query blockchain network with filters
+- `GET /blockchain/network/clusters` - Get entity relationship clusters
 
-### Graph Visualization
-- `GET /graph` - Get nodes and links for graph visualization
+### Natural Language Query Endpoints
+- `POST /blockchain/query/natural` - Execute natural language blockchain queries
+- `POST /blockchain/query/trace` - Trace transaction paths
+- `POST /blockchain/query/pattern` - Identify transaction patterns
 
-### Network Analysis
-- `GET /analysis/metrics` - Get comprehensive graph metrics (density, clustering, etc.)
-- `GET /analysis/centrality` - Get node centrality measures (degree, betweenness, etc.)
-- `GET /analysis/communities` - Detect communities within the network
-- `GET /analysis/layout` - Generate layout coordinates for graph visualization
-- `GET /analysis/temporal` - Analyze graph metrics over time periods
-- `GET /analysis/visualization` - Get comprehensive visualization data with metrics
+### Graph Analytics Endpoints
+- `GET /analysis/metrics` - Get blockchain network metrics
+- `GET /analysis/centrality` - Calculate key entity influence metrics
+- `GET /analysis/communities` - Detect entity communities
+- `GET /analysis/flow` - Analyze value flow through the network
+- `GET /analysis/temporal` - Track metrics over time
+- `GET /analysis/visualization` - Get enhanced visualization data
 
-### Query Operations
-- `POST /query` - Execute natural language queries on interactions
+### Data Generation Endpoints
+- `POST /generate/data` - Generate synthetic blockchain data
+- `POST /generate/scenario` - Generate blockchain scenario data
+- `POST /generate/transaction` - Generate a single synthetic transaction
 
-### Data Generation
-- `POST /generate/data` - Generate synthetic agent and interaction data
-- `POST /generate/kqml` - Generate a synthetic KQML interaction
-- `GET /generate/interaction` - Generate a single random interaction without storing it
-
-### Database Operations
+### Database Administration
 - `DELETE /admin/database/clear` - Clear all data from the database
-- `POST /admin/database/clean` - Clean up orphaned nodes and invalid relationships
+- `POST /admin/database/setup` - Initialize database collections and indexes
 
-### Deprecated Endpoints (for backward compatibility)
-- `POST /agents/message` - Store an interaction (use `/agents/interaction` instead)
-- `POST /synthetic/data` - Generate synthetic data (use `/generate/data` instead)
-- `POST /synthetic/kqml` - Generate synthetic interactions (use `/generate/kqml` instead)
-
-### WebSocket
-- `WebSocket /ws` - Real-time interaction updates
+### WebSocket Endpoints
+- `WebSocket /ws` - Real-time blockchain event notifications
 
 For detailed API documentation with request/response examples, please refer to the [API_ENDPOINTS.md](./API_ENDPOINTS.md) file or visit the Swagger UI at http://localhost:8000/docs when the backend is running.
 
@@ -695,57 +710,88 @@ graph TD
 
 ## Database Schema
 
-### ArangoDB Implementation
+### Blockchain Graph Database
 
-The system now uses ArangoDB, a multi-model database that provides excellent graph capabilities while being easier to manage than Neo4j:
+The system uses ArangoDB as a specialized graph database for blockchain data, providing excellent performance for complex relationship queries:
 
 ```mermaid
 erDiagram
-    AGENT ||--o{ INTERACTION : "SENT"
-    AGENT ||--o{ INTERACTION : "RECEIVED_BY"
-    AGENT ||--o{ PARTICIPATION : "PARTICIPATED_IN"
-    RUN ||--o{ PARTICIPATION : "INCLUDES"
+    WALLET ||--o{ TRANSACTION : "SENDS"
+    WALLET ||--o{ TRANSACTION : "RECEIVES"
+    WALLET ||--o{ CONTRACT : "DEPLOYS"
+    CONTRACT ||--o{ EVENT : "EMITS"
+    TRANSACTION ||--o{ EVENT : "CONTAINS"
+    WALLET }|--o{ ALERT : "RELATED_TO"
+    CONTRACT }|--o{ ALERT : "RELATED_TO"
+    TRANSACTION }|--o{ ALERT : "RELATED_TO"
     
-    AGENT {
-        string _key "Agent ID"
-        string id "Public ID"
-        string name "Agent name"
-        string type "Agent type"
-        json metadata "Additional properties"
-        datetime timestamp "Creation time"
+    WALLET {
+        string _key "Wallet ID"
+        string address "Blockchain address"
+        string chain "Blockchain network"
+        float balance "Current balance"
+        string type "Wallet type (EOA, contract)"
+        datetime first_seen "First activity time"
+        datetime last_active "Latest activity time"
+        float risk_score "Risk assessment (0-100)"
+        array tags "Wallet tags/labels"
+        json metadata "Chain-specific data"
     }
     
-    INTERACTION {
-        string _key "Interaction ID"
-        string _from "Source agent"
-        string _to "Target agent"
-        string id "Public ID"
-        string topic "Interaction topic"
-        int priority "Priority level (1-5)"
-        float sentiment "Sentiment score (-1 to 1)"
-        string message "Interaction content"
-        json metadata "Additional properties"
-        datetime timestamp "When interaction occurred"
-        int duration_ms "Processing time"
-        string run_id "Associated run ID"
+    TRANSACTION {
+        string _key "Transaction hash"
+        string hash "Transaction identifier"
+        string chain "Blockchain network"
+        int block_number "Block containing transaction"
+        datetime timestamp "Transaction time"
+        string from_address "Sender address"
+        string to_address "Recipient address"
+        float value "Transaction amount"
+        string status "Transaction status"
+        int gas_used "Gas consumed"
+        int gas_price "Gas price"
+        string input_data "Transaction input data"
+        float risk_score "Risk assessment (0-100)"
+        json metadata "Additional transaction data"
     }
     
-    RUN {
-        string _key "Run ID"
-        string id "Public ID"
-        string name "Run name"
-        string description "Run description"
-        datetime timestamp "Start time"
-        string status "Run status"
-        json metrics "Performance metrics"
+    CONTRACT {
+        string _key "Contract address"
+        string address "Contract address"
+        string chain "Blockchain network"
+        string creator "Creator address"
+        string creation_tx "Creation transaction hash"
+        datetime creation_timestamp "Creation time"
+        boolean verified "Source code verification"
+        string name "Contract name"
+        string bytecode "Contract bytecode"
+        json abi "Contract ABI"
+        string source_code "Verified source code"
+        float risk_score "Risk assessment (0-100)"
+        array vulnerabilities "Detected security issues"
     }
     
-    PARTICIPATION {
-        string _from "Agent reference"
-        string _to "Run reference"
-        string role "Agent role (sender/receiver)"
-        string interaction_id "Related interaction"
-        datetime timestamp "Participation time"
+    EVENT {
+        string _key "Event identifier"
+        string contract_address "Contract address"
+        string tx_hash "Transaction hash"
+        int block_number "Block number"
+        int log_index "Index in transaction logs"
+        datetime timestamp "Event time"
+        string name "Event name"
+        string signature "Event signature"
+        json params "Event parameters"
+    }
+    
+    ALERT {
+        string _key "Alert ID"
+        datetime timestamp "Alert generation time"
+        string severity "Alert severity level"
+        string type "Alert classification"
+        string entity "Related entity address/hash"
+        string entity_type "Entity type"
+        string description "Alert description"
+        string status "Alert status"
     }
 ```
 

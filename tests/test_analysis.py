@@ -91,7 +91,19 @@ def app_with_db(mock_db):
     if not hasattr(app.state, "db"):
         app.state.db = None
     
-    with patch.object(app.state, "db", mock_db):
+    # Mock the get_graph_data function to return test data directly
+    test_data = {
+        "nodes": test_nodes,
+        "links": test_links
+    }
+    
+    # Create an async mock function for get_graph_data
+    async def mock_get_graph_data(*args, **kwargs):
+        return test_data
+    
+    # Use patch on the module function
+    with patch("app.analysis_routes.get_graph_data", mock_get_graph_data), \
+         patch.object(app.state, "db", mock_db):
         yield app
 
 def test_network_analyzer_initialization():

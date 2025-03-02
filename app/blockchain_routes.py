@@ -96,12 +96,15 @@ router = APIRouter(prefix="/blockchain", tags=["blockchain"])
 # Dependency to get database
 async def get_db():
     """Get database connection."""
+    from app.config import get_settings
+    settings = get_settings()
+    
     db = ArangoDatabase(
-        host="localhost",
-        port=8529,
-        username="root",
-        password="password",
-        db_name="neurospark"
+        host=settings.ARANGO_HOST,
+        port=settings.ARANGO_PORT,
+        username=settings.ARANGO_USER,
+        password=settings.ARANGO_PASSWORD,
+        db_name=settings.ARANGO_DB
     )
     await db.connect()
     try:
@@ -122,7 +125,21 @@ async def get_wallet(
     if not wallet:
         raise HTTPException(status_code=404, detail=f"Wallet {address} not found on {chain} chain")
     
-    return wallet
+    # Transform the wallet data to match the response model
+    response_data = {
+        "address": wallet["address"],
+        "chain": wallet["chain"],
+        # Convert float balance to integer (wei/satoshi units)
+        "balance": int(wallet.get("balance", 0)) if isinstance(wallet.get("balance"), (int, float)) else 0,
+        # Map 'type' field to 'wallet_type' for the API response
+        "wallet_type": wallet.get("type", "EOA"),
+        "first_seen": wallet.get("first_seen"),
+        "last_active": wallet.get("last_active"),
+        "risk_score": wallet.get("risk_score"),
+        "tags": wallet.get("tags", [])
+    }
+    
+    return response_data
 
 @router.get("/wallets/{address}/transactions", response_model=TransactionList)
 async def get_wallet_transactions(
@@ -183,7 +200,22 @@ async def get_transaction(
     if not transaction:
         raise HTTPException(status_code=404, detail=f"Transaction {tx_hash} not found on {chain} chain")
     
-    return transaction
+    # Transform the transaction data to match the response model
+    response_data = {
+        "hash": transaction["hash"],
+        "chain": transaction["chain"],
+        "block_number": int(transaction.get("block_number", 0)),
+        "timestamp": transaction.get("timestamp", ""),
+        "from_address": transaction.get("from_address") or transaction.get("from", ""),
+        "to_address": transaction.get("to_address") or transaction.get("to", ""),
+        "value": int(transaction.get("value", 0)) if isinstance(transaction.get("value"), (int, float)) else 0,
+        "status": transaction.get("status", "unknown"),
+        "gas_used": int(transaction.get("gas_used", 0)) if isinstance(transaction.get("gas_used"), (int, float)) else None,
+        "gas_price": int(transaction.get("gas_price", 0)) if isinstance(transaction.get("gas_price"), (int, float)) else None,
+        "risk_score": transaction.get("risk_score")
+    }
+    
+    return response_data
 
 # Contract routes
 @router.get("/contracts/{address}", response_model=ContractResponse)
@@ -198,7 +230,19 @@ async def get_contract(
     if not contract:
         raise HTTPException(status_code=404, detail=f"Contract {address} not found on {chain} chain")
     
-    return contract
+    # Transform the contract data to match the response model
+    response_data = {
+        "address": contract["address"],
+        "chain": contract["chain"],
+        "creator": contract.get("creator"),
+        "creation_timestamp": contract.get("creation_timestamp"),
+        "verified": bool(contract.get("verified", False)),
+        "name": contract.get("name"),
+        "risk_score": contract.get("risk_score"),
+        "vulnerabilities": contract.get("vulnerabilities", [])
+    }
+    
+    return response_data
 
 @router.get("/contracts/{address}/events", response_model=EventList)
 async def get_contract_events(

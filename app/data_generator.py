@@ -564,6 +564,34 @@ class DataGenerator:
             blocks=blocks
         )
     
+    def generate_scenario_data(
+        self,
+        num_agents: int,
+        num_interactions: int,
+        scenario: str = "token_transfer",
+        **kwargs
+    ) -> Dict[str, Any]:
+        """Generate data for a specific blockchain scenario.
+
+        This is an alias for generate_blockchain_data to maintain
+        backward compatibility with older tests.
+        
+        Args:
+            num_agents: Number of agents to generate
+            num_interactions: Number of interactions to generate
+            scenario: Scenario type (dex, lending, nft, token_transfer)
+            **kwargs: Additional parameters to pass to the generator
+            
+        Returns:
+            Dictionary with generated agents and interactions
+        """
+        return self.generate_blockchain_data(
+            num_wallets=num_agents,
+            num_transactions=num_interactions,
+            scenario=scenario,
+            **kwargs
+        )
+    
     def get_available_scenarios(self) -> Dict[str, str]:
         """Get available blockchain scenarios with descriptions."""
         return self.blockchain_scenarios

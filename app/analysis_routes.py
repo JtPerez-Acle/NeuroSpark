@@ -18,43 +18,22 @@ def get_db(request: Request):
     return request.app.state.db
 
 async def get_graph_data(request, limit: int = 1000):
-    """Helper to get graph data from database."""
+    """Helper to get graph data from database.
+    
+    For blockchain data, this returns wallet and contract nodes connected by transactions.
+    """
     db = get_db(request)
-    agents = await db.get_agents()
-    nodes = []
     
-    for agent in agents:
-        nodes.append({
-            "id": agent["id"],
-            "label": agent.get("role", "agent"),
-            "type": agent.get("type", "unknown"),
-            "details": f"Type: {agent.get('type', 'unknown')}, Role: {agent.get('role', 'unknown')}",
-            "timestamp": agent.get("timestamp", datetime.now().isoformat())
-        })
-        
-    # Get all interactions as links
-    interactions = await db.get_interactions(limit=limit)
-    links = []
+    # First, ensure blockchain collections exist
+    await db.setup_blockchain_collections()
     
-    for interaction in interactions:
-        link_id = interaction.get("id", "unknown")
-        source = interaction.get("sender_id", "unknown")
-        target = interaction.get("receiver_id", "unknown")
-        
-        # Skip links with unknown source or target (they would break the graph)
-        if source == "unknown" or target == "unknown":
-            continue
-            
-        links.append({
-            "id": link_id,
-            "source": source,
-            "target": target,
-            "type": interaction.get("interaction_type", "interaction"),
-            "label": interaction.get("topic", "interaction"),
-            "timestamp": interaction.get("timestamp", datetime.now().isoformat())
-        })
-        
-    return {"nodes": nodes, "links": links}
+    # Get blockchain network data with a limit
+    network = await db.get_blockchain_network({
+        "limit": limit
+    })
+    
+    # Return network data - might be empty if no blockchain data exists yet
+    return network
 
 @analysis_router.get("/metrics",
     response_model=Dict[str, Any],
@@ -228,6 +207,52 @@ async def get_layout(
     except Exception as e:
         logger.error(f"Error generating layout: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+
+@analysis_router.get("/degree_centrality",
+    response_model=Dict[str, Any],
+    summary="Get Degree Centrality",
+    description="""Get degree centrality for nodes in the graph.
+    
+    This endpoint is for compatibility with older tests.
+    For more complete centrality metrics, use the /centrality endpoint.
+    """,
+    response_description="Degree centrality for nodes."
+)
+async def get_degree_centrality(
+    request: Request,
+    directed: bool = Query(True, description="Whether to treat the graph as directed"),
+    link_limit: int = Query(1000, description="Maximum number of links to analyze")
+) -> Dict[str, Any]:
+    """Get degree centrality for nodes."""
+    try:
+        logger.info(f"Calculating degree centrality (directed={directed})")
+        graph_data = await get_graph_data(request, limit=link_limit)
+        
+        if not graph_data["nodes"] or not graph_data["links"]:
+            return {"message": "Graph is empty", "node_degrees": {}}
+        
+        analyzer = NetworkAnalyzer(graph_data["nodes"], graph_data["links"], directed=directed)
+        centrality = analyzer.get_centrality_metrics()
+        
+        # Return in-degree centrality for directed graphs, regular degree for undirected
+        if directed and "in_degree" in centrality:
+            degree_centrality = centrality["in_degree"]
+        elif not directed and "degree" in centrality:
+            degree_centrality = centrality["degree"]
+        else:
+            degree_centrality = {}
+        
+        return {
+            "message": "Degree centrality calculated successfully",
+            "node_degrees": degree_centrality
+        }
+    except Exception as e:
+        logger.error(f"Error calculating degree centrality: {str(e)}")
+        return {
+            "message": "Error calculating degree centrality",
+            "node_degrees": {},
+            "error": str(e)
+        }
 
 @analysis_router.get("/temporal",
     response_model=Dict[str, Any],

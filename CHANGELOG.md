@@ -5,49 +5,67 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.9.0] - Unreleased
+## [0.9.0] - 2025-03-01
 
 ### Added
 - Web3 Integration - Phase 1: Blockchain Data Foundation
-  - Ethereum blockchain connector for data ingestion
-  - Blockchain entity data models (wallets, transactions, smart contracts, events)
-  - Transaction ingestion pipeline with filtering capabilities
-  - Enhanced ArangoDB schema for blockchain entities
-  - Graph relationship handling for blockchain transactions and contract interactions
+  - Ethereum blockchain connector for data ingestion with Web3.py integration
+  - Complete blockchain entity data models (wallets, transactions, smart contracts, events)
+  - Robust transaction ingestion pipeline with comprehensive filtering capabilities
+  - Enhanced ArangoDB schema optimized for blockchain entity relationships
+  - Graph relationship modeling for blockchain transactions and contract interactions
+  - Multi-chain architecture with support for additional blockchain networks
 
 - Risk Scoring & Security Analysis
-  - Comprehensive risk scoring algorithms for wallets, transactions, and contracts
-  - Multi-factor risk assessment based on behavior patterns
-  - Risk score normalization on a 0-100 scale
-  - Detection of suspicious wallet activities
-  - Smart contract risk assessment with vulnerability tracking
-  - Alerts system for high-risk entities
-  - Database operations for risk-based entity retrieval
+  - Multi-factor risk scoring algorithms for wallets, transactions, and contracts
+  - Behavioral pattern analysis for suspicious activity detection
+  - Risk score normalization on a standardized 0-100 scale
+  - Anomaly detection for unusual wallet and transaction patterns
+  - Smart contract risk assessment with vulnerability categorization and tracking
+  - Real-time alerts system for high-risk entities and activities
+  - Advanced database operations for performance-optimized risk-based queries
+
+- Network Analysis for Blockchain Data
+  - Transaction flow analysis to identify value transfer patterns
+  - Advanced community detection to discover related entity clusters
+  - Centrality metrics to identify influential wallets and contracts
+  - Temporal analysis for tracking entity behavior changes over time
+  - Pattern recognition for common cryptocurrency scams and fraud
+  - Visualization enhancements for complex blockchain relationships
 
 - LLM-based Blockchain Query System
-  - Ollama integration for local LLM deployment
-  - Natural language to blockchain query translation
-  - Prompt engineering for blockchain-specific queries
-  - Response formatting for blockchain data
+  - Ollama integration for efficient local LLM deployment
+  - Specialized natural language to blockchain query translation
+  - Custom prompt engineering for blockchain-specific data retrieval
+  - Context-aware response formatting for blockchain data presentation
+  - Query template system for common blockchain analysis patterns
 
 - New API Endpoints
-  - `/blockchain/transactions` - Retrieve and query blockchain transactions
-  - `/blockchain/wallets` - Analyze wallet activities and relationships
-  - `/blockchain/contracts` - Inspect and analyze smart contracts
-  - `/blockchain/events` - Access and analyze smart contract events
-  - `/blockchain/risk` - Risk assessment and alert monitoring for blockchain entities
+  - `/blockchain/transactions` - Comprehensive transaction retrieval and analysis
+  - `/blockchain/wallets` - In-depth wallet activity and relationship analysis
+  - `/blockchain/contracts` - Smart contract inspection and security analysis
+  - `/blockchain/events` - Smart contract event monitoring and analysis
+  - `/blockchain/risk` - Multi-factor risk assessment and alert management
+  - `/blockchain/query/natural` - Natural language interface for blockchain data
+  - `/blockchain/network` - Enhanced graph visualization for blockchain relationships
 
 ### Changed
-- Extended existing graph models to support blockchain entities
-- Enhanced NetworkX integration with blockchain-specific algorithms
-- Improved WebSocket handler for real-time blockchain events
-- Updated Docker configuration for Ollama integration
+- Complete migration from agent-based system to blockchain intelligence platform
+- Enhanced graph data models to natively support blockchain entity relationships
+- Upgraded NetworkX integration with specialized blockchain analysis algorithms
+- Improved WebSocket handler for real-time blockchain event monitoring
+- Updated Docker configuration with optimized Ollama LLM integration
+- Refactored database operations for better performance with blockchain data
+- Enhanced security with comprehensive validation and sanitization
+- Extended synthetic data generation for realistic blockchain scenarios
+- Optimized query performance for large blockchain dataset handling
 
 ### Removed
-- Legacy agent-specific data models and operations
-- KQML message handling system (replaced with blockchain entities)
-- Scenario-based synthetic data generation (replaced with blockchain data)
-- Agent interaction tracking system
+- Legacy agent-specific data models and database operations
+- KQML message handling system (completely replaced with blockchain entities)
+- Agent-focused scenario data generation (replaced with blockchain scenarios)
+- Agent interaction tracking system (replaced with transaction tracking)
+- Compatibility endpoints for legacy agent-based functionality
 
 ## [0.8.2] - 2025-03-01
 

@@ -17,7 +17,7 @@ class WalletOperations(BaseOperations):
         """Create indexes for wallet collection."""
         if 'wallets' in self._db.collections():
             self._db.collection('wallets').add_hash_index(['address', 'chain'], unique=True)
-            self._db.collection('wallets').add_hash_index(['wallet_type'], unique=False)
+            self._db.collection('wallets').add_hash_index(['type'], unique=False)
             self._db.collection('wallets').add_hash_index(['risk_score'], unique=False)
     
     async def store_wallet(self, wallet_data: Dict[str, Any]) -> Dict[str, Any]:

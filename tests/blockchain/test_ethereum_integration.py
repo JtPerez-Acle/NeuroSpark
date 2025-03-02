@@ -21,7 +21,7 @@ async def ethereum_connector_mock():
         address="0x1234567890123456789012345678901234567890",
         chain="ethereum",
         balance=5000000000000000000,  # 5 ETH
-        wallet_type="EOA",
+        type="EOA",
         first_seen=datetime.datetime.utcnow(),
         last_active=datetime.datetime.utcnow()
     )
@@ -78,7 +78,7 @@ async def test_wallet_database_integration(test_db_arango, ethereum_connector_mo
     assert retrieved_wallet is not None
     assert retrieved_wallet['address'] == "0x1234567890123456789012345678901234567890"
     assert retrieved_wallet['chain'] == "ethereum"
-    assert retrieved_wallet['wallet_type'] == "EOA"
+    assert retrieved_wallet['type'] == "EOA"
 
 @pytest.mark.asyncio
 async def test_transaction_database_integration(test_db_arango, ethereum_connector_mock):
@@ -139,33 +139,47 @@ async def test_contract_database_integration(test_db_arango, ethereum_connector_
     assert retrieved_contract['creator'] == "0x1234567890123456789012345678901234567890"
     assert retrieved_contract['verified'] is True
 
-# Helper method to add to the database class for testing
-async def test_db_arango_get_wallets_by_query(self, query: dict) -> list:
-    """Get wallets by query for testing."""
-    if not self.is_connected():
-        await self.connect()
-        
-    # Build AQL query
-    aql_parts = ["FOR w IN wallets"]
-    bind_vars = {}
+@pytest.mark.asyncio
+async def test_db_arango_get_wallets_by_query(test_db_arango, ethereum_connector_mock):
+    """Test wallet querying by criteria."""
+    # First ensure the blockchain collections exist
+    await test_db_arango.setup_blockchain_collections()
     
-    # Add filters
-    filters = []
-    for key, value in query.items():
-        filters.append(f"w.{key} == @{key}")
-        bind_vars[key] = value
+    # Create and store Ethereum wallet directly
+    eth_wallet = {
+        "address": "0x1234567890123456789012345678901234567890",
+        "chain": "ethereum",
+        "type": "EOA",
+        "balance": 5000000000000000000,
+        "first_seen": datetime.datetime.utcnow().isoformat(),
+        "last_active": datetime.datetime.utcnow().isoformat(),
+        "tags": ["trader"],
+        "risk_score": 15.5
+    }
+    await test_db_arango.store_wallet(eth_wallet)
     
-    if filters:
-        aql_parts.append("FILTER " + " AND ".join(filters))
+    # Create and store Solana wallet directly
+    solana_wallet = {
+        "address": "0x9876543210987654321098765432109876543210",
+        "chain": "solana",
+        "type": "EOA",
+        "balance": 5000000000000000000,
+        "first_seen": datetime.datetime.utcnow().isoformat(),
+        "last_active": datetime.datetime.utcnow().isoformat(),
+        "tags": ["nft_collector"],
+        "risk_score": 25.2
+    }
+    await test_db_arango.store_wallet(solana_wallet)
     
-    aql_parts.append("RETURN UNSET(w, '_id', '_key', '_rev')")
+    # Test query by chain
+    ethereum_wallets = await test_db_arango.get_wallets_by_query({"chain": "ethereum"})
+    assert len(ethereum_wallets) == 1
+    assert ethereum_wallets[0]["address"] == "0x1234567890123456789012345678901234567890"
     
-    aql_query = " ".join(aql_parts)
+    solana_wallets = await test_db_arango.get_wallets_by_query({"chain": "solana"})
+    assert len(solana_wallets) == 1
+    assert solana_wallets[0]["address"] == "0x9876543210987654321098765432109876543210"
     
-    # Execute query
-    cursor = self._db.aql.execute(aql_query, bind_vars=bind_vars)
-    return [doc for doc in cursor]
-
-# Add helper method to database class
-from app.database.arango.database import ArangoDatabase
-ArangoDatabase.get_wallets_by_query = test_db_arango_get_wallets_by_query
+    # Test query by wallet type
+    eoa_wallets = await test_db_arango.get_wallets_by_query({"type": "EOA"})
+    assert len(eoa_wallets) == 2

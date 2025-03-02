@@ -17,7 +17,6 @@ from .data_generator import DataGenerator
 # Define routers
 generate_router = APIRouter()
 admin_router = APIRouter()
-compat_router = APIRouter(tags=["compatibility"])  # For backward compatibility
 
 def get_db(request: Request):
     """Get a database connection from the request state."""
@@ -131,6 +130,9 @@ async def generate_transaction(request: Request) -> Dict[str, Any]:
         # Get database connection
         db = get_db(request)
         
+        # Ensure blockchain collections are set up
+        await db.setup_blockchain_collections()
+        
         # Store the wallets
         await db.store_wallet(sender)
         await db.store_wallet(receiver)
@@ -138,6 +140,14 @@ async def generate_transaction(request: Request) -> Dict[str, Any]:
         # Extract the transaction from metadata
         if "metadata" in transaction and "transaction" in transaction["metadata"]:
             tx_data = transaction["metadata"]["transaction"]
+            
+            # Ensure transaction has proper key format for blockchain routes
+            if "from_address" not in tx_data and "from" in tx_data:
+                tx_data["from_address"] = tx_data["from"]
+                
+            if "to_address" not in tx_data and "to" in tx_data:
+                tx_data["to_address"] = tx_data["to"]
+                
             # Store the transaction
             await db.store_transaction(tx_data)
         else:
@@ -278,226 +288,4 @@ async def database_stats(request: Request) -> Dict[str, Any]:
         logger.error(f"Error retrieving database statistics: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
-# Backward compatibility API endpoints for tests (agent-based model)
-
-@compat_router.post("/agents", 
-    response_model=Dict[str, Any],
-    summary="Create Agent (Compatibility)",
-    description="[Compatibility] Create an agent."
-)
-async def create_agent(agent: Dict[str, Any], request: Request) -> Dict[str, Any]:
-    """Create an agent (compatibility endpoint)."""
-    try:
-        # Map to a wallet for blockchain model
-        wallet_data = {
-            "address": agent.get("id", f"0x{agent['id']}") if agent.get("id") else f"0x{uuid.uuid4().hex}",
-            "chain": "ethereum",
-            "wallet_type": "EOA",
-            "role": agent.get("role", "user"),
-            "tags": [agent.get("type", "human"), agent.get("role", "user")],
-            "balance": 0.0,
-            "first_seen": datetime.now(timezone.utc).isoformat(),
-            "last_active": datetime.now(timezone.utc).isoformat()
-        }
-        
-        # Get database connection
-        db = get_db(request)
-        
-        # Store wallet
-        await db.store_wallet(wallet_data)
-        
-        return {
-            "status": "success",
-            "agent": agent
-        }
-    except Exception as e:
-        logger.error(f"Error creating agent: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-@compat_router.post("/agents/message",
-    response_model=Dict[str, Any],
-    summary="Send Agent Message (Compatibility)",
-    description="[Compatibility] Send a message between agents."
-)
-async def send_agent_message(message: Dict[str, Any], request: Request) -> Dict[str, Any]:
-    """Send a message between agents (compatibility endpoint)."""
-    try:
-        # Map to a transaction for blockchain model
-        transaction_data = {
-            "hash": f"0x{uuid.uuid4().hex}",
-            "from_address": message.get("sender_id", ""),
-            "to_address": message.get("receiver_id", ""),
-            "chain": "ethereum",
-            "value": 0,
-            "gas_used": 21000,
-            "gas_price": 20000000000,
-            "block_number": 123456,
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-            "status": "success",
-            "message": message.get("message", ""),
-            "topic": message.get("topic", ""),
-            "interaction_type": message.get("interaction_type", "message")
-        }
-        
-        # Get database connection
-        db = get_db(request)
-        
-        # Store transaction
-        await db.store_transaction(transaction_data)
-        
-        return {
-            "status": "success",
-            "interaction_id": transaction_data["hash"],
-            "message": message
-        }
-    except Exception as e:
-        logger.error(f"Error sending message: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-@compat_router.get("/agents/{agent_id}/runs",
-    response_model=Dict[str, Any],
-    summary="Get Agent Runs (Compatibility)",
-    description="[Compatibility] Get runs for an agent."
-)
-async def get_agent_runs(agent_id: str, request: Request) -> Dict[str, Any]:
-    """Get runs for an agent (compatibility endpoint)."""
-    return {
-        "agent_id": agent_id,
-        "runs": []
-    }
-
-@compat_router.get("/agents/{agent_id}/interactions",
-    response_model=Dict[str, Any],
-    summary="Get Agent Interactions (Compatibility)",
-    description="[Compatibility] Get interactions for an agent."
-)
-async def get_agent_interactions(agent_id: str, request: Request) -> Dict[str, Any]:
-    """Get interactions for an agent (compatibility endpoint)."""
-    try:
-        # Map to wallet transactions for blockchain model
-        db = get_db(request)
-        
-        transactions = await db.get_wallet_transactions(
-            address=agent_id,
-            limit=20
-        )
-        
-        # Convert transactions to interaction format
-        interactions = []
-        for tx in transactions:
-            interactions.append({
-                "interaction_id": tx["hash"],
-                "sender_id": tx["from_address"],
-                "receiver_id": tx["to_address"],
-                "timestamp": tx["timestamp"],
-                "topic": tx.get("topic", "ethereum_transaction"),
-                "message": tx.get("message", "Blockchain transaction"),
-                "interaction_type": tx.get("interaction_type", "transaction")
-            })
-        
-        return {
-            "agent_id": agent_id,
-            "interactions": interactions
-        }
-    except Exception as e:
-        logger.error(f"Error getting agent interactions: {e}")
-        return {
-            "agent_id": agent_id,
-            "interactions": []
-        }
-
-@compat_router.post("/synthetic/data",
-    response_model=Dict[str, Any],
-    summary="Generate Synthetic Data (Compatibility)",
-    description="[Compatibility] Generate synthetic data."
-)
-async def generate_synthetic_data(params: Dict[str, Any], request: Request) -> Dict[str, Any]:
-    """Generate synthetic data (compatibility endpoint)."""
-    try:
-        # Map to blockchain data generation
-        num_agents = params.get("numAgents", 10)
-        num_interactions = params.get("numInteractions", 20)
-        
-        generator = DataGenerator()
-        data = generator.generate_blockchain_data(num_agents, num_interactions)
-        
-        # Store wallets and transactions
-        db = get_db(request)
-        for wallet in data["agents"]:
-            await db.store_wallet(wallet)
-        
-        for transaction in data["interactions"]:
-            await db.store_transaction(transaction)
-        
-        return {
-            "status": "success",
-            "data": data
-        }
-    except Exception as e:
-        logger.error(f"Error generating synthetic data: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-@compat_router.get("/network",
-    response_model=Dict[str, Any],
-    summary="Get Network (Compatibility)",
-    description="[Compatibility] Get network data."
-)
-async def get_network(
-    request: Request,
-    node_type: Optional[str] = None,
-    time_range: Optional[str] = None
-) -> Dict[str, Any]:
-    """Get network data (compatibility endpoint)."""
-    try:
-        # Map to blockchain network
-        db = get_db(request)
-        
-        # Convert agent node_type to wallet/contract type
-        node_type_map = {
-            "Agent": "wallet",
-            "Human": "wallet",
-            "AI": "contract"
-        }
-        
-        wallet_type = node_type_map.get(node_type) if node_type else None
-        
-        # Get blockchain network data
-        network = await db.get_network_data(
-            node_type=wallet_type,
-            time_range=time_range
-        )
-        
-        return network
-    except Exception as e:
-        logger.error(f"Error getting network data: {e}")
-        return {
-            "nodes": [],
-            "edges": []
-        }
-
-@compat_router.post("/network/query",
-    response_model=Dict[str, Any],
-    summary="Query Network (Compatibility)",
-    description="[Compatibility] Query network data."
-)
-async def query_network(query: Dict[str, Any], request: Request) -> Dict[str, Any]:
-    """Query network data (compatibility endpoint)."""
-    try:
-        # Map to blockchain network query
-        db = get_db(request)
-        
-        # Convert parameters
-        network = await db.query_network(
-            node_type=query.get("node_type"),
-            relationship_type=query.get("relationship_type"),
-            start_time=query.get("start_time"),
-            end_time=query.get("end_time"),
-            agent_ids=query.get("agent_ids"),
-            limit=query.get("limit"),
-            include_properties=query.get("include_properties", True)
-        )
-        
-        return network
-    except Exception as e:
-        logger.error(f"Error querying network data: {e}")
-        raise HTTPException(status_code=422, detail=f"Invalid query parameters: {str(e)}")
+# Legacy compatibility endpoints removed - migrated to blockchain architecture
