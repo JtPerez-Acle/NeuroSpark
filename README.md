@@ -567,6 +567,8 @@ docker-compose -f docker-compose.test.yml up -d arangodb
 ```bash
 pytest -v --cov=app --cov-report=term-missing
 ```
+- Our test suite currently has 60% overal coverage, focusing on the most critical files.
+- 81/81 tests passing
 
 ## Running the Application
 
