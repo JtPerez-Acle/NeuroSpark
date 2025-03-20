@@ -493,8 +493,8 @@ class BlockchainScenarioGenerator(ScenarioGenerator):
                 break
         
         return {
-            "agents": agents,
-            "interactions": interactions,
+            "wallets": agents,
+            "transactions": interactions,
             "run_id": run_id,
             "scenario": scenario,
             "blockchain": "ethereum",

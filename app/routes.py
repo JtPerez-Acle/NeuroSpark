@@ -39,15 +39,15 @@ async def generate_data(params: SyntheticDataParams, request: Request) -> Dict[s
         generator = DataGenerator()
         
         # Generate synthetic blockchain data
-        data = generator.generate_blockchain_data(params.numAgents, params.numInteractions)
+        data = generator.generate_blockchain_data(params.numWallets, params.numTransactions)
         
         # Store wallets
-        for wallet in data["agents"]:
+        for wallet in data["wallets"]:
             # Store wallet using appropriate method
             await db.store_wallet(wallet)
         
         # Store transactions
-        for transaction in data["interactions"]:
+        for transaction in data["transactions"]:
             if "metadata" in transaction and "transaction" in transaction["metadata"]:
                 tx_data = transaction["metadata"]["transaction"]
                 await db.store_transaction(tx_data)
@@ -83,15 +83,15 @@ async def generate_scenario_data(params: ScenarioParams, request: Request) -> Di
         if params.blocks is not None:
             kwargs["blocks"] = params.blocks
             
-        logger.info(f"Generating blockchain scenario data for {params.scenario} with {params.numAgents} wallets, {params.numInteractions} transactions")
-        data = generator.generate_blockchain_data(params.numAgents, params.numInteractions, **kwargs)
+        logger.info(f"Generating blockchain scenario data for {params.scenario} with {params.numWallets} wallets, {params.numTransactions} transactions")
+        data = generator.generate_blockchain_data(params.numWallets, params.numTransactions, **kwargs)
         
         # Store wallets
-        for wallet in data["agents"]:
+        for wallet in data["wallets"]:
             await db.store_wallet(wallet)
         
         # Store transactions
-        for transaction in data["interactions"]:
+        for transaction in data["transactions"]:
             if "metadata" in transaction and "transaction" in transaction["metadata"]:
                 tx_data = transaction["metadata"]["transaction"]
                 await db.store_transaction(tx_data)

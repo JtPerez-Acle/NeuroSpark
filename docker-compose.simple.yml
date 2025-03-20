@@ -23,7 +23,7 @@ services:
     environment:
       - ARANGO_HOST=arangodb
       - ARANGO_PORT=8529
-      - ARANGO_DB=agent_interactions
+      - ARANGO_DB=blockchain_intelligence
       - ARANGO_USER=root
       - ARANGO_PASSWORD=password
     depends_on:

@@ -1,5 +1,6 @@
 """Test configuration."""
 import os
+import sys
 import tempfile
 import uuid
 import pytest
@@ -9,6 +10,11 @@ from typing import Dict, Any, List
 from fastapi import FastAPI
 from httpx import AsyncClient
 from unittest.mock import patch, MagicMock
+
+# Add the project root directory to Python path
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
 
 # Mock logging setup to avoid file access issues
 patch('app.monitoring.logging_config.setup_logging', MagicMock()).start()
@@ -118,12 +124,55 @@ async def async_client(test_app):
         yield client
 
 @pytest.fixture
-def test_agents() -> List[Dict[str, Any]]:
-    """Get test agents data."""
+def test_wallets() -> List[Dict[str, Any]]:
+    """Get test blockchain wallets data."""
     return [
         {
-            "id": "test_agent",
-            "type": "human",
-            "role": "system"
+            "address": "0x1234567890123456789012345678901234567890",
+            "chain": "ethereum",
+            "type": "EOA",
+            "balance": 1.5,
+            "first_seen": "2025-01-01T00:00:00Z",
+            "last_active": "2025-03-01T00:00:00Z",
+            "risk_score": 25.0,
+            "tags": ["trader"]
+        }
+    ]
+
+@pytest.fixture
+def test_contracts() -> List[Dict[str, Any]]:
+    """Get test blockchain contracts data."""
+    return [
+        {
+            "address": "0xabcdef0123456789abcdef0123456789abcdef01",
+            "chain": "ethereum",
+            "type": "contract",
+            "creator": "0x1234567890123456789012345678901234567890",
+            "creation_tx": "0xaaaaaaaabbbbbbbbccccccccddddddddeeeeeeeeffffffffaaaaaaaabbbbbbbb",
+            "creation_timestamp": "2025-01-15T00:00:00Z",
+            "verified": True,
+            "name": "TestToken",
+            "risk_score": 15.0,
+            "tags": ["token", "erc20"]
+        }
+    ]
+
+@pytest.fixture
+def test_transactions() -> List[Dict[str, Any]]:
+    """Get test blockchain transactions data."""
+    return [
+        {
+            "hash": "0xaaaaaaaabbbbbbbbccccccccddddddddeeeeeeeeffffffffaaaaaaaabbbbbbbb",
+            "chain": "ethereum",
+            "block_number": 12345678,
+            "timestamp": "2025-02-15T12:00:00Z",
+            "from_address": "0x1234567890123456789012345678901234567890",
+            "to_address": "0xabcdef0123456789abcdef0123456789abcdef01",
+            "value": 1000000000000000000,  # 1 ETH in wei
+            "gas_used": 21000,
+            "gas_price": 50000000000,
+            "status": "success",
+            "input_data": "0x",
+            "risk_score": 10.0
         }
     ]

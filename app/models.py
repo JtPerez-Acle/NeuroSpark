@@ -99,43 +99,43 @@ class NodeAndEdges(BaseModel):
     edges: List[Dict[str, Any]]
 
 class GraphQuery(BaseModel):
-    """Model for graph queries."""
-    node_type: str
-    relationship_type: Optional[str] = None
-    start_time: Optional[str] = None
-    end_time: Optional[str] = None
-    agent_ids: Optional[List[str]] = None
-    limit: Optional[int] = None
-    include_properties: Optional[bool] = True
+    """Model for blockchain graph queries."""
+    node_type: str  # wallet or contract
+    relationship_type: Optional[str] = None  # transaction, call, etc.
+    start_time: Optional[str] = None  # Start of time range
+    end_time: Optional[str] = None  # End of time range
+    addresses: Optional[List[str]] = None  # List of blockchain addresses to query
+    limit: Optional[int] = None  # Maximum results to return
+    include_properties: Optional[bool] = True  # Include additional properties in results
     
 class NaturalLanguageQuery(BaseModel):
     """Model for natural language queries."""
     query: str = Field(..., description="Natural language query to process")
     context: Optional[Dict[str, Any]] = Field(default_factory=dict, description="Additional context for the query")
     
-class NetworkAgents(BaseModel):
-    """Model for network agent data."""
-    nodes: List[Dict[str, Any]]
-    links: List[Dict[str, Any]]
+class BlockchainNetwork(BaseModel):
+    """Model for blockchain network data."""
+    nodes: List[Dict[str, Any]]  # Wallets and contracts
+    links: List[Dict[str, Any]]  # Transactions and events
     
 class NetworkFilter(BaseModel):
-    """Model for network filtering."""
-    agent_types: Optional[List[str]] = Field(None, description="Types of agents to include")
-    agent_roles: Optional[List[str]] = Field(None, description="Roles of agents to include")
-    interaction_types: Optional[List[str]] = Field(None, description="Types of interactions to include")
+    """Model for blockchain network filtering."""
+    entity_types: Optional[List[str]] = Field(None, description="Types of blockchain entities to include (wallet, contract)")
+    entity_roles: Optional[List[str]] = Field(None, description="Roles of entities to include (trader, dex, etc.)")
+    transaction_types: Optional[List[str]] = Field(None, description="Types of transactions to include (transfer, swap, etc.)")
     time_range: Optional[List[str]] = Field(None, description="Time range [start, end] in ISO format")
-    min_interactions: Optional[int] = Field(0, description="Minimum number of interactions")
-    max_agents: Optional[int] = Field(100, description="Maximum number of agents to return")
+    min_transactions: Optional[int] = Field(0, description="Minimum number of transactions")
+    max_entities: Optional[int] = Field(100, description="Maximum number of blockchain entities to return")
     
 class NetworkStats(BaseModel):
-    """Model for network statistics."""
-    num_agents: int
-    num_interactions: int
-    agent_types: Dict[str, int]
-    interaction_types: Dict[str, int]
-    average_interactions_per_agent: float
-    top_agents: List[Dict[str, Any]]
-    recent_activity: List[Dict[str, Any]]
+    """Model for blockchain network statistics."""
+    num_entities: int  # Number of wallets and contracts
+    num_transactions: int  # Number of blockchain transactions
+    entity_types: Dict[str, int]  # Count by type (wallet, contract, etc.)
+    transaction_types: Dict[str, int]  # Count by type (transfer, swap, etc.)
+    average_transactions_per_entity: float
+    top_entities: List[Dict[str, Any]]  # Most active wallets/contracts
+    recent_activity: List[Dict[str, Any]]  # Recent blockchain transactions
     
 class DatabaseOperation(BaseModel):
     """Model for database operations."""
@@ -145,15 +145,15 @@ class DatabaseOperation(BaseModel):
     details: Optional[Any] = None
 
 class SyntheticDataParams(BaseModel):
-    """Model for synthetic data generation parameters."""
-    numAgents: int = Field(gt=0, description="Number of agents to generate")
-    numInteractions: int = Field(gt=0, description="Number of interactions to generate")
+    """Model for synthetic blockchain data generation parameters."""
+    numWallets: int = Field(gt=0, description="Number of blockchain entities (wallets/contracts) to generate")
+    numTransactions: int = Field(gt=0, description="Number of blockchain transactions to generate")
 
 class ScenarioParams(BaseModel):
     """Model for blockchain scenario-based data generation parameters."""
     scenario: str = Field(..., description="Blockchain scenario type (dex, lending, nft, token_transfer)")
-    numAgents: int = Field(gt=0, description="Number of wallets and contracts to generate")
-    numInteractions: int = Field(gt=0, description="Number of transactions to generate")
+    numWallets: int = Field(gt=0, description="Number of wallets and contracts to generate")
+    numTransactions: int = Field(gt=0, description="Number of blockchain transactions to generate")
     blocks: Optional[int] = Field(None, description="Number of blocks to simulate")
     
     @field_validator('scenario')
@@ -173,14 +173,18 @@ class RunData(BaseModel):
     blockchain: Optional[str] = Field("ethereum", description="Blockchain for this run")
     metadata: Optional[Dict[str, Any]] = Field(default_factory=dict, description="Additional metadata for the run")
 
-class InteractionData(BaseModel):
-    """Interaction data model."""
-    interaction_id: Optional[str] = Field(None, description="Unique identifier for the interaction")
-    sender_id: str = Field(..., description="ID of the sending agent/wallet")
-    receiver_id: str = Field(..., description="ID of the receiving agent/wallet")
-    topic: Optional[str] = Field(None, description="Topic of the interaction")
-    message: Optional[str] = Field(None, description="Message content")
-    timestamp: Optional[str] = Field(None, description="ISO format timestamp of the interaction")
-    interaction_type: Optional[str] = Field(None, description="Type of interaction (transfer, swap, etc.)")
-    run_id: Optional[str] = Field(None, description="ID of the associated run")
+class TransactionData(BaseModel):
+    """Blockchain transaction data model."""
+    transaction_hash: Optional[str] = Field(None, description="Unique hash for the blockchain transaction")
+    from_address: str = Field(..., description="Sender blockchain address")
+    to_address: str = Field(..., description="Recipient blockchain address")
+    chain: Optional[str] = Field("ethereum", description="Blockchain identifier")
+    data: Optional[str] = Field(None, description="Transaction input data/calldata")
+    timestamp: Optional[str] = Field(None, description="ISO format timestamp of the transaction")
+    transaction_type: Optional[str] = Field(None, description="Type of transaction (transfer, swap, etc.)")
+    block_number: Optional[int] = Field(None, description="Block containing the transaction")
+    value: Optional[str] = Field(None, description="Transaction value in wei")
+    gas_price: Optional[int] = Field(None, description="Gas price in wei")
+    gas_used: Optional[int] = Field(None, description="Gas used by the transaction")
+    status: Optional[str] = Field("success", description="Transaction status (success, failed, pending)")
     metadata: Optional[Dict[str, Any]] = Field(default_factory=dict, description="Additional metadata")

@@ -19,8 +19,9 @@ if ! command -v docker &> /dev/null; then
     exit 1
 fi
 
-if ! command -v docker-compose &> /dev/null; then
-    echo -e "${RED}Docker Compose is not installed. Please install Docker Compose first.${NC}"
+# Check for docker compose command
+if ! docker compose version &> /dev/null; then
+    echo -e "${RED}Docker Compose is not installed or not in PATH. Please install Docker Compose first.${NC}"
     exit 1
 fi
 
@@ -31,7 +32,7 @@ mkdir -p ./logs
 
 # Start the services
 echo -e "\n${BOLD}Starting services...${NC}"
-docker-compose up -d
+docker compose up -d
 
 # Wait for ArangoDB to be healthy
 echo -e "\n${BOLD}Waiting for ArangoDB to be ready...${NC}"
@@ -39,9 +40,9 @@ attempts=0
 max_attempts=30
 
 until [ $attempts -ge $max_attempts ]; do
-    if docker-compose ps | grep "arangodb" | grep -q "Up"; then
+    if docker compose ps | grep "arangodb" | grep -q "Up"; then
         # Check if healthcheck is passing
-        if docker-compose ps | grep "arangodb" | grep -q "(healthy)"; then
+        if docker compose ps | grep "arangodb" | grep -q "(healthy)"; then
             echo -e "${GREEN}ArangoDB is ready!${NC}"
             break
         fi
@@ -65,9 +66,9 @@ echo -e "ArangoDB UI available at: ${BOLD}http://localhost:8529${NC} (user: root
 echo -e "Grafana Dashboard available at: ${BOLD}http://localhost:3000${NC} (user: admin, password: admin)"
 
 echo -e "\n${BOLD}Useful Commands:${NC}"
-echo "  docker-compose ps                   - View running services"
-echo "  docker-compose logs -f app          - Follow app logs"
-echo "  docker-compose logs -f arangodb     - Follow database logs"
-echo "  docker-compose restart app          - Restart the API"
-echo "  docker-compose down                 - Stop services"
-echo "  docker-compose down -v              - Stop services and remove volumes"
+echo "  docker compose ps                   - View running services"
+echo "  docker compose logs -f app          - Follow app logs"
+echo "  docker compose logs -f arangodb     - Follow database logs"
+echo "  docker compose restart app          - Restart the API"
+echo "  docker compose down                 - Stop services"
+echo "  docker compose down -v              - Stop services and remove volumes"

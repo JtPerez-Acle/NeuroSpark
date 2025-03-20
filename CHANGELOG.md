@@ -5,6 +5,47 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.2] - 2025-03-19
+
+### Fixed
+- Fixed test failures related to migration from agent-based to blockchain-based system
+- Updated data generator to use consistent terminology ("wallets" and "transactions" instead of "agents" and "interactions")
+- Fixed Python import paths in test files to ensure proper module resolution
+- Updated all references to use blockchain schema keys correctly
+- Fixed test_analysis_integration.py to handle transaction metadata structure correctly
+- Added missing timezone import in test_main.py
+- Fixed Docker Compose commands in all scripts to use V2 syntax
+- Fixed 'from_address' KeyError in network analysis by properly accessing transaction metadata
+- Updated all test files to use blockchain terminology consistently
+- Fixed all 81 tests to pass with 100% success rate
+
+### Changed
+- Completed migration to blockchain-focused terminology throughout the codebase
+- Improved test robustness by properly handling transaction data structure
+- Enhanced mock data generation to provide realistic blockchain transaction metadata
+
+## [0.9.1] - 2025-03-12
+
+### Added
+- Added comprehensive test suite for blockchain intelligence features
+- Added TransactionData model to replace legacy InteractionData
+- Added BlockchainNetwork model to replace NetworkAgents
+
+### Changed
+- Complete overhaul of model classes to use blockchain terminology consistently
+- Updated SyntheticDataParams and ScenarioParams to use numWallets/numTransactions parameters
+- Replaced agent_types and agent_roles with entity_types and entity_roles in network filters
+- Modified WebSocket handler to use blockchain addresses instead of agent IDs
+- Transformed test suite to use blockchain entities and transactions
+- Updated GraphQuery to use addresses parameter instead of agent_ids
+
+### Removed
+- Removed all legacy agent-based terminology from the codebase
+- Removed LegacyOperations class and its methods from the database layer
+- Removed backward compatibility functions from test fixtures
+- Removed legacy.py from database operations
+- Removed references to "agent_interactions" database in favor of "blockchain_intelligence"
+
 ## [0.9.0] - 2025-03-01
 
 ### Added

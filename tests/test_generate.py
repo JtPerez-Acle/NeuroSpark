@@ -42,7 +42,7 @@ def mock_generator():
     with patch("app.routes.DataGenerator") as mock:
         generator = MagicMock()
         generator.generate_blockchain_data.return_value = {
-            "agents": [
+            "wallets": [
                 {
                     "address": f"0x{uuid.uuid4().hex[:40]}",
                     "chain": "ethereum",
@@ -60,22 +60,18 @@ def mock_generator():
                     "risk_score": 25.0
                 }
             ],
-            "interactions": [
+            "transactions": [
                 {
-                    "metadata": {
-                        "transaction": {
-                            "hash": f"0x{uuid.uuid4().hex[:64]}",
-                            "from_address": "0x1234",
-                            "to_address": "0x5678",
-                            "chain": "ethereum",
-                            "block_number": 12345678,
-                            "value": 1000000000000000000,
-                            "gas_used": 21000,
-                            "gas_price": 50000000000,
-                            "status": "success",
-                            "timestamp": datetime.now(timezone.utc).isoformat()
-                        }
-                    }
+                    "hash": f"0x{uuid.uuid4().hex[:64]}",
+                    "from_address": "0x1234",
+                    "to_address": "0x5678",
+                    "chain": "ethereum",
+                    "block_number": 12345678,
+                    "value": 1000000000000000000,
+                    "gas_used": 21000,
+                    "gas_price": 50000000000,
+                    "status": "success",
+                    "timestamp": datetime.now(timezone.utc).isoformat()
                 }
             ]
         }
@@ -118,7 +114,7 @@ def mock_scenario_generator():
     """Mock blockchain scenario generator fixture."""
     with patch("app.routes.DataGenerator.generate_blockchain_data") as mock:
         mock.return_value = {
-            "agents": [
+            "wallets": [
                 {
                     "address": f"0x{uuid.uuid4().hex[:40]}",
                     "chain": "ethereum",
@@ -136,22 +132,20 @@ def mock_scenario_generator():
                     "risk_score": 20.0
                 }
             ],
-            "interactions": [
+            "transactions": [
                 {
+                    "hash": f"0x{uuid.uuid4().hex[:64]}",
+                    "from_address": "0x1234",
+                    "to_address": "0x5678",
+                    "chain": "ethereum",
+                    "block_number": 12345678,
+                    "value": 1000000000000000000,
+                    "gas_used": 21000,
+                    "gas_price": 50000000000,
+                    "status": "success",
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "input_data": "0x095ea7b3",
                     "metadata": {
-                        "transaction": {
-                            "hash": f"0x{uuid.uuid4().hex[:64]}",
-                            "from_address": "0x1234",
-                            "to_address": "0x5678",
-                            "chain": "ethereum",
-                            "block_number": 12345678,
-                            "value": 1000000000000000000,
-                            "gas_used": 21000,
-                            "gas_price": 50000000000,
-                            "status": "success",
-                            "timestamp": datetime.now(timezone.utc).isoformat(),
-                            "input_data": "0x095ea7b3"
-                        },
                         "scenario": "token_transfer",
                         "action": "approve"
                     }
@@ -163,10 +157,10 @@ def mock_scenario_generator():
 
 def test_generate_data(client, mock_db, mock_generator):
     """Test generating synthetic blockchain data."""
-    # Create test data
+    # Create test data using blockchain terminology
     params = {
-        "numAgents": 2,
-        "numInteractions": 1
+        "numWallets": 2,
+        "numTransactions": 1
     }
     
     # Make request
@@ -175,8 +169,8 @@ def test_generate_data(client, mock_db, mock_generator):
     # Verify response
     assert response.status_code == 200
     assert response.json()["status"] == "success"
-    assert "agents" in response.json()["data"]
-    assert "interactions" in response.json()["data"]
+    assert "wallets" in response.json()["data"]
+    assert "transactions" in response.json()["data"]
     
     # Verify generator calls
     mock_generator.generate_blockchain_data.assert_called_once_with(2, 1)
@@ -187,11 +181,11 @@ def test_generate_data(client, mock_db, mock_generator):
 
 def test_generate_scenario(client, mock_db, mock_scenario_generator):
     """Test generating blockchain scenario data."""
-    # Create test data
+    # Create blockchain scenario test data
     params = {
         "scenario": "token_transfer",
-        "numAgents": 2,
-        "numInteractions": 1,
+        "numWallets": 2,
+        "numTransactions": 1,
         "blocks": 10
     }
     
@@ -204,8 +198,8 @@ def test_generate_scenario(client, mock_db, mock_scenario_generator):
     assert response.json()["scenario"] == "token_transfer"
     assert "blockchain" in response.json()
     assert response.json()["blockchain"] == "ethereum"
-    assert "agents" in response.json()["data"]
-    assert "interactions" in response.json()["data"]
+    assert "wallets" in response.json()["data"]
+    assert "transactions" in response.json()["data"]
     
     # Verify generator calls
     mock_scenario_generator.assert_called_once_with(2, 1, blocks=10)

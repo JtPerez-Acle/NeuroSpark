@@ -353,7 +353,7 @@ async def query_network(
             relationship_type=relationship_type,
             start_time=start_time,
             end_time=end_time,
-            agent_ids=addresses,  # Map addresses to agent_ids parameter
+            addresses=addresses,  # Use addresses parameter directly
             limit=limit,
             include_properties=include_properties
         )

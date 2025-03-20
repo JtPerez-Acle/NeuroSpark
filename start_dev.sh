@@ -19,8 +19,9 @@ if ! command -v docker &> /dev/null; then
     exit 1
 fi
 
-if ! command -v docker-compose &> /dev/null; then
-    echo -e "${RED}Docker Compose is not installed. Please install Docker Compose first.${NC}"
+# Check for docker compose command
+if ! docker compose version &> /dev/null; then
+    echo -e "${RED}Docker Compose is not installed or not in PATH. Please install Docker Compose first.${NC}"
     exit 1
 fi
 
@@ -29,7 +30,7 @@ mkdir -p ./logs
 
 # Start the services using the simple configuration
 echo -e "\n${BOLD}Starting services in development mode...${NC}"
-docker-compose -f docker-compose.simple.yml up -d
+docker compose -f docker-compose.simple.yml up -d
 
 # Wait for ArangoDB to be healthy
 echo -e "\n${BOLD}Waiting for ArangoDB to be ready...${NC}"
@@ -37,9 +38,9 @@ attempts=0
 max_attempts=30
 
 until [ $attempts -ge $max_attempts ]; do
-    if docker-compose -f docker-compose.simple.yml ps | grep "arangodb" | grep -q "Up"; then
+    if docker compose -f docker-compose.simple.yml ps | grep "arangodb" | grep -q "Up"; then
         # Check if healthcheck is passing
-        if docker-compose -f docker-compose.simple.yml ps | grep "arangodb" | grep -q "(healthy)"; then
+        if docker compose -f docker-compose.simple.yml ps | grep "arangodb" | grep -q "(healthy)"; then
             echo -e "${GREEN}ArangoDB is ready!${NC}"
             break
         fi
@@ -65,10 +66,10 @@ echo -e "\n${YELLOW}${BOLD}Note:${NC} This is a simplified development setup wit
 echo -e "For a full deployment with Prometheus, Grafana, etc., use ${BOLD}./start.sh${NC} instead."
 
 echo -e "\n${BOLD}Useful Development Commands:${NC}"
-echo "  docker-compose -f docker-compose.simple.yml ps               - View running services"
-echo "  docker-compose -f docker-compose.simple.yml logs -f app      - Follow app logs"
-echo "  docker-compose -f docker-compose.simple.yml logs -f arangodb - Follow database logs"
-echo "  docker-compose -f docker-compose.simple.yml restart app      - Restart the API"
-echo "  docker-compose -f docker-compose.simple.yml down             - Stop services"
-echo "  docker-compose -f docker-compose.simple.yml down -v          - Stop services and remove volumes"
-echo "  docker-compose -f docker-compose.simple.yml exec app /bin/bash - Access app container shell"
+echo "  docker compose -f docker-compose.simple.yml ps               - View running services"
+echo "  docker compose -f docker-compose.simple.yml logs -f app      - Follow app logs"
+echo "  docker compose -f docker-compose.simple.yml logs -f arangodb - Follow database logs"
+echo "  docker compose -f docker-compose.simple.yml restart app      - Restart the API"
+echo "  docker compose -f docker-compose.simple.yml down             - Stop services"
+echo "  docker compose -f docker-compose.simple.yml down -v          - Stop services and remove volumes"
+echo "  docker compose -f docker-compose.simple.yml exec app /bin/bash - Access app container shell"

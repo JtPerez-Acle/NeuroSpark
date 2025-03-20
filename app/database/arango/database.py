@@ -15,7 +15,6 @@ from .operations.contract import ContractOperations
 from .operations.event import EventOperations
 from .operations.alert import AlertOperations
 from .operations.network import NetworkOperations
-from .operations.legacy import LegacyOperations
 
 logger = logging.getLogger(__name__)
 
@@ -40,7 +39,6 @@ class ArangoDatabase(DatabaseInterface):
         self._event_ops = None
         self._alert_ops = None
         self._network_ops = None
-        self._legacy_ops = None
     
     async def connect(self) -> None:
         """Connect to the database."""
@@ -54,7 +52,6 @@ class ArangoDatabase(DatabaseInterface):
         self._event_ops = EventOperations(self._db)
         self._alert_ops = AlertOperations(self._db)
         self._network_ops = NetworkOperations(self._db)
-        self._legacy_ops = LegacyOperations(self._db)
         
         # Ensure indexes exist for better performance
         self._create_indexes()
@@ -76,9 +73,6 @@ class ArangoDatabase(DatabaseInterface):
             
         if hasattr(self, '_alert_ops') and self._alert_ops:
             self._alert_ops.create_indexes()
-            
-        if hasattr(self, '_legacy_ops') and self._legacy_ops:
-            self._legacy_ops.create_indexes()
     
     async def disconnect(self) -> None:
         """Disconnect from the database."""
@@ -90,7 +84,6 @@ class ArangoDatabase(DatabaseInterface):
         self._event_ops = None
         self._alert_ops = None
         self._network_ops = None
-        self._legacy_ops = None
     
     def is_connected(self) -> bool:
         """Check if database is connected.
@@ -533,35 +526,6 @@ class ArangoDatabase(DatabaseInterface):
         
         return await self._network_ops.clear_database()
     
-    # ====================
-    # = Legacy Operations =
-    # ====================
-    
-    async def store_run(self, run: Dict[str, Any]) -> None:
-        """Store a run in the database.
-        
-        Args:
-            run: Dictionary containing run data
-        """
-        if not self.is_connected():
-            await self.connect()
-        
-        await self._legacy_ops.store_run(run)
-    
-    async def get_runs(self, agent_id: str = None) -> List[Dict[str, Any]]:
-        """Get runs from the database.
-        
-        Args:
-            agent_id: Optional agent ID to filter runs
-            
-        Returns:
-            List of run dictionaries
-        """
-        if not self.is_connected():
-            await self.connect()
-        
-        return await self._legacy_ops.get_runs(agent_id)
-    
     # =====================
     # = Risk Operations =
     # =====================
@@ -615,17 +579,17 @@ class ArangoDatabase(DatabaseInterface):
                           relationship_type: Optional[str] = None,
                           start_time: Optional[str] = None, 
                           end_time: Optional[str] = None,
-                          agent_ids: Optional[List[str]] = None, 
+                          addresses: Optional[List[str]] = None, 
                           limit: Optional[int] = None,
                           include_properties: bool = True) -> Dict[str, Any]:
-        """Advanced query for network data with multiple filter options.
+        """Advanced query for blockchain network data with multiple filter options.
         
         Args:
-            node_type: Filter nodes by type
-            relationship_type: Filter relationships by type
-            start_time: Filter for interactions after this time
-            end_time: Filter for interactions before this time
-            agent_ids: Filter for interactions involving these agents
+            node_type: Filter nodes by type (wallet, contract)
+            relationship_type: Filter relationships by type (transaction, call)
+            start_time: Filter for transactions after this time
+            end_time: Filter for transactions before this time
+            addresses: Filter for transactions involving these blockchain addresses
             limit: Maximum number of results to return
             include_properties: Whether to include node and edge properties
             
@@ -635,13 +599,13 @@ class ArangoDatabase(DatabaseInterface):
         if not self.is_connected():
             await self.connect()
         
-        # Convert to blockchain network filters
+        # Prepare blockchain network filters
         filters = {
             "node_type": node_type,
             "relationship_type": relationship_type,
             "start_time": start_time,
             "end_time": end_time,
-            "addresses": agent_ids,  # Map agent_ids to addresses for blockchain context
+            "addresses": addresses,
             "include_properties": include_properties
         }
         

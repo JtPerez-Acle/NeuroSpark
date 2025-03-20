@@ -89,24 +89,24 @@ async def test_blockchain_data_generation(async_client):
     """Test blockchain data generation endpoints."""
     # Generate blockchain data
     params = {
-        "numAgents": 5,
-        "numInteractions": 10
+        "numWallets": 5,
+        "numTransactions": 10
     }
     response = await async_client.post("/generate/data", json=params)
     assert response.status_code == 200
     data = response.json()
     assert data["status"] == "success"
     assert "data" in data
-    assert "agents" in data["data"]
-    assert "interactions" in data["data"]
-    assert len(data["data"]["agents"]) == 5
-    assert len(data["data"]["interactions"]) == 10
+    assert "wallets" in data["data"]
+    assert "transactions" in data["data"]
+    assert len(data["data"]["wallets"]) == 5
+    assert len(data["data"]["transactions"]) == 10
     
-    # Generate scenario data
+    # Generate blockchain scenario data
     scenario_params = {
         "scenario": "dex",
-        "numAgents": 5,
-        "numInteractions": 10,
+        "numWallets": 5,
+        "numTransactions": 10,
         "blocks": 5
     }
     response = await async_client.post("/generate/scenario", json=scenario_params)
@@ -115,16 +115,16 @@ async def test_blockchain_data_generation(async_client):
     assert data["status"] == "success"
     assert data["scenario"] == "dex"
     assert "data" in data
-    assert "agents" in data["data"]
-    assert "interactions" in data["data"]
+    assert "wallets" in data["data"]
+    assert "transactions" in data["data"]
 
 @pytest.mark.asyncio
 async def test_blockchain_network_endpoints(async_client):
     """Test blockchain network endpoints."""
-    # Generate some data first
+    # Generate some blockchain data first
     params = {
-        "numAgents": 5,
-        "numInteractions": 10
+        "numWallets": 5,
+        "numTransactions": 10
     }
     await async_client.post("/generate/data", json=params)
     

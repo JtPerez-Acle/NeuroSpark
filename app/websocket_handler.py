@@ -11,7 +11,7 @@ from uuid import uuid4
 class ConnectionType(str, Enum):
     """Type of WebSocket connection."""
     FRONTEND = "frontend"
-    AGENT = "agent"
+    BLOCKCHAIN = "blockchain"
 
 
 class WebSocketConnection:
@@ -173,15 +173,15 @@ class WebSocketManager:
         )
         return recipients
 
-    async def broadcast_to_agent(
+    async def broadcast_to_address(
         self,
-        agent_id: str,
+        address: str,
         event_type: str,
         data: Dict[str, Any]
     ) -> List[str]:
-        """Broadcast an event to a specific agent."""
-        if not agent_id:
-            raise ValueError("agent_id cannot be empty")
+        """Broadcast an event to a specific blockchain address."""
+        if not address:
+            raise ValueError("address cannot be empty")
         if not event_type:
             raise ValueError("event_type cannot be empty")
         if data is None:
@@ -190,27 +190,27 @@ class WebSocketManager:
         message = {"type": event_type, "data": data}
         recipients = []
         
-        if agent_id in self.connection_manager.active_connections:
-            connection = self.connection_manager.active_connections[agent_id]
+        if address in self.connection_manager.active_connections:
+            connection = self.connection_manager.active_connections[address]
             if event_type in connection.subscriptions:
                 try:
                     await connection.send_message(message)
-                    recipients.append(agent_id)
+                    recipients.append(address)
                 except Exception as e:
                     logger.error(
                         "Failed to send WebSocket message",
                         extra={
                             "type": "websocket",
                             "data": {
-                                "connection_id": agent_id,
+                                "connection_id": address,
                                 "error": str(e)
                             }
                         }
                     )
-                    await self.disconnect(agent_id)
+                    await self.disconnect(address)
         
         logger.info(
-            "Broadcast WebSocket message to agent",
+            "Broadcast WebSocket message to blockchain address",
             extra={
                 "type": "websocket",
                 "data": {

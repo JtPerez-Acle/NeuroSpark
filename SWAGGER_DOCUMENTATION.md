@@ -1,6 +1,6 @@
-# KQML Parser API Swagger Documentation
+# NeuroSpark Blockchain Intelligence API Swagger Documentation
 
-This document provides information about the Swagger API documentation for the KQML Parser Backend.
+This document provides information about the Swagger API documentation for the NeuroSpark Blockchain Intelligence System.
 
 ## Accessing Swagger Documentation
 
@@ -16,76 +16,139 @@ And the ReDoc alternative documentation at:
 http://localhost:8000/redoc
 ```
 
-## New in Version 0.8.2: Network Analysis
+## New in Version 0.9.0: Blockchain Intelligence
 
-The KQML Parser backend now includes comprehensive graph analysis features through NetworkX integration. These features are available through the `/analysis/*` endpoints:
+The NeuroSpark backend now includes comprehensive blockchain analytics features:
 
-- **Graph Metrics Analysis**: Calculate density, connectivity, clustering, and other network metrics
-- **Centrality Measures**: Identify important nodes using degree, betweenness, closeness, eigenvector centrality
-- **Community Detection**: Find natural clusters of agents using algorithms like Louvain and Label Propagation
-- **Layout Generation**: Generate optimal node positions for visualization
-- **Temporal Analysis**: Track how network metrics change over time
-- **Enhanced Visualization**: Combine layout, metrics, and community detection for rich visualizations
+- **Blockchain Data Ingestion**: Support for Ethereum blockchain data with expandable architecture
+- **Smart Contract Analysis**: Risk assessment and monitoring for deployed contracts
+- **Wallet Intelligence**: Address profiling, transaction history analysis, and risk scoring
+- **Transaction Monitoring**: Analyze transaction patterns and identify suspicious activities
+- **Graph Network Analysis**: Visualize and analyze relationships between blockchain entities
+- **LLM-Powered Queries**: Natural language processing for blockchain data exploration
+- **Risk Scoring System**: Multi-factor risk assessment for blockchain entities
+- **Real-time Alerts**: Notification system for suspicious blockchain activities
 
-These endpoints are fully documented in Swagger UI and can be used to gain deeper insights into agent interaction patterns.
+These endpoints are fully documented in Swagger UI and can be used to gain deeper insights into blockchain entity relationships and activities.
 
 ## Key Models Documentation
 
-### AgentInteraction Model
+### WalletModel
 
-This is the primary model used for sending and receiving agent interactions:
+This model represents a blockchain wallet/address:
 
 ```json
 {
-  "interaction_id": "string (UUID, auto-generated if not provided)",
-  "timestamp": "string (ISO datetime, auto-generated if not provided)",
-  "sender_id": "string (required)",
-  "receiver_id": "string (required)",
-  "topic": "string (required)",
-  "message": "string (required)",
-  "run_id": "string (optional)",
-  "interaction_type": "string (default: 'message')",
-  "sentiment": "float (optional, range: -1 to 1)",
-  "priority": "integer (optional, range: 1-5)",
-  "duration_ms": "integer (optional)",
+  "address": "string (required, blockchain address)",
+  "chain": "string (e.g., 'ethereum', 'solana')",
+  "balance": "number (current balance)",
+  "first_seen": "string (ISO datetime)",
+  "last_active": "string (ISO datetime)",
+  "type": "string (e.g., 'EOA', 'contract')",
+  "tags": ["array of strings (optional)"],
+  "risk_score": "number (0-100)",
   "metadata": "object (optional)"
 }
 ```
 
-Valid `interaction_type` values:
-- "message" - General message
-- "query" - Question or request for information
-- "response" - Reply to a query
-- "notification" - Update or alert
-- "request" - Action request
-- "broadcast" - Message to multiple receivers
-- "alert" - Important notification
-- "command" - Directive to perform action
-- "report" - Status or information report
-- "update" - Status change notification
+### TransactionModel
+
+Represents a blockchain transaction:
+
+```json
+{
+  "hash": "string (transaction hash)",
+  "block_number": "integer",
+  "timestamp": "string (ISO datetime)",
+  "from": "string (sender address)",
+  "to": "string (recipient address)",
+  "value": "string (transaction amount)",
+  "gas_used": "integer",
+  "gas_price": "string",
+  "status": "boolean (success/failure)",
+  "chain": "string (blockchain name)",
+  "input_data": "string (transaction input data)",
+  "risk_score": "number (0-100, optional)"
+}
+```
+
+### ContractModel
+
+Represents a smart contract:
+
+```json
+{
+  "address": "string (contract address)",
+  "chain": "string (blockchain name)",
+  "creator": "string (creator address)",
+  "creation_tx": "string (creation transaction hash)",
+  "creation_timestamp": "string (ISO datetime)",
+  "verified": "boolean (source code verification status)",
+  "name": "string (contract name, if known)",
+  "bytecode": "string (contract bytecode)",
+  "abi": "array (contract ABI, if available)",
+  "source_code": "string (verified source code, if available)",
+  "risk_score": "number (0-100)",
+  "vulnerabilities": ["array of vulnerability objects"]
+}
+```
+
+### EventModel
+
+Represents a smart contract event:
+
+```json
+{
+  "contract": "string (contract address)",
+  "tx_hash": "string (transaction hash)",
+  "block_number": "integer",
+  "timestamp": "string (ISO datetime)",
+  "name": "string (event name)",
+  "signature": "string (event signature)",
+  "params": "object (event parameters)",
+  "chain": "string (blockchain name)"
+}
+```
+
+### AlertModel
+
+Represents a security alert:
+
+```json
+{
+  "timestamp": "string (ISO datetime)",
+  "severity": "string (low, medium, high, critical)",
+  "type": "string (alert type)",
+  "entity": "string (related entity address or transaction hash)",
+  "description": "string (alert description)",
+  "context": "object (supporting evidence)",
+  "status": "string (new, acknowledged, resolved)"
+}
+```
 
 ### GraphData Model
 
-Used for graph visualization:
+Used for blockchain graph visualization:
 
 ```json
 {
   "nodes": [
     {
-      "id": "string",
-      "label": "string",
-      "type": "string",
+      "id": "string (address)",
+      "label": "string (name or address)",
+      "type": "string (wallet, contract, etc.)",
+      "risk_score": "number (0-100)",
       "details": "string (optional)",
       "timestamp": "string (ISO datetime, optional)"
     }
   ],
   "links": [
     {
-      "id": "string",
-      "source": "string",
-      "target": "string",
-      "type": "string",
-      "label": "string (optional)"
+      "id": "string (transaction hash)",
+      "source": "string (from address)",
+      "target": "string (to address)",
+      "value": "number (transaction value)",
+      "timestamp": "string (ISO datetime)"
     }
   ]
 }
@@ -93,7 +156,7 @@ Used for graph visualization:
 
 ### Query Model
 
-Used for natural language queries:
+Used for natural language blockchain queries:
 
 ```json
 {
@@ -102,18 +165,20 @@ Used for natural language queries:
 ```
 
 Example queries:
-- "Find all interactions with priority greater than 3"
-- "Show messages from agent1 to agent2"
-- "Find all messages with topic temperature_reading"
+- "Find all transactions with value greater than 10 ETH"
+- "Show interactions between address 0x123... and 0x456..."
+- "List high-risk contracts deployed in the last week"
+- "Trace the flow of funds from address 0x789..."
 
-### SyntheticDataParams Model
+### BlockchainDataParams Model
 
-Used for generating synthetic data:
+Used for generating synthetic blockchain data:
 
 ```json
 {
-  "numAgents": "integer (> 0)",
-  "numInteractions": "integer (> 0)"
+  "numWallets": "integer (> 0)",
+  "numTransactions": "integer (> 0)",
+  "chainType": "string (ethereum, solana, etc.)"
 }
 ```
 
@@ -159,42 +224,64 @@ You can test API endpoints directly from the Swagger UI by:
 
 ## Sample Requests
 
-### Create Interaction
+### Get Wallet Details
+
+```bash
+curl -X 'GET' \
+  'http://localhost:8000/blockchain/wallets/0x1234567890abcdef1234567890abcdef12345678' \
+  -H 'accept: application/json'
+```
+
+### Get Transaction Details
+
+```bash
+curl -X 'GET' \
+  'http://localhost:8000/blockchain/transactions/0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890' \
+  -H 'accept: application/json'
+```
+
+### Get Contract Risk Assessment
+
+```bash
+curl -X 'GET' \
+  'http://localhost:8000/blockchain/contracts/0x1234567890abcdef1234567890abcdef12345678/risk' \
+  -H 'accept: application/json'
+```
+
+### Generate Synthetic Blockchain Data
 
 ```bash
 curl -X 'POST' \
-  'http://localhost:8000/agents/interaction' \
+  'http://localhost:8000/generate/blockchain' \
   -H 'Content-Type: application/json' \
   -d '{
-  "sender_id": "agent1",
-  "receiver_id": "agent2",
-  "topic": "temperature_reading",
-  "message": "Current temperature is 25.5°C",
-  "interaction_type": "report",
-  "priority": 3
+  "numWallets": 10,
+  "numTransactions": 50,
+  "chainType": "ethereum"
 }'
 ```
 
-### Generate Synthetic Data
+### Analyze Transaction Flow
 
 ```bash
 curl -X 'POST' \
-  'http://localhost:8000/generate/data' \
+  'http://localhost:8000/blockchain/query/trace' \
   -H 'Content-Type: application/json' \
   -d '{
-  "numAgents": 5,
-  "numInteractions": 20
+  "address": "0x1234567890abcdef1234567890abcdef12345678",
+  "depth": 3,
+  "direction": "outgoing"
 }'
 ```
 
-### Query Interactions
+### Natural Language Blockchain Query
 
 ```bash
 curl -X 'POST' \
-  'http://localhost:8000/query' \
+  'http://localhost:8000/blockchain/query/natural' \
   -H 'Content-Type: application/json' \
   -d '{
-  "query": "Find all interactions with priority greater than 3"
+  "query": "Find high-risk transactions involving contract 0x1234567890abcdef1234567890abcdef12345678"
 }'
 ```
 
@@ -202,7 +289,7 @@ curl -X 'POST' \
 
 ```bash
 curl -X 'GET' \
-  'http://localhost:8000/graph'
+  'http://localhost:8000/graph?address=0x1234567890abcdef1234567890abcdef12345678&depth=2'
 ```
 
 ### Get Graph Metrics Analysis
@@ -224,13 +311,6 @@ curl -X 'GET' \
 ```bash
 curl -X 'GET' \
   'http://localhost:8000/analysis/communities?algorithm=louvain&directed=false'
-```
-
-### Get Graph Layout for Visualization
-
-```bash
-curl -X 'GET' \
-  'http://localhost:8000/analysis/layout?layout=spring&dimensions=2'
 ```
 
 ### Get Enhanced Visualization Data

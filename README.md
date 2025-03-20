@@ -1,8 +1,8 @@
-# NeuroSpark v0.9.0
+# NeuroSpark v0.9.2
 
 An AI-Powered Blockchain Intelligence System for analyzing smart contracts, monitoring blockchain activities, and providing real-time Web3 security insights with advanced graph analytics.
 
-## 🌟 Introducing NeuroSpark 0.9.0: Comprehensive Blockchain Intelligence
+## 🌟 Introducing NeuroSpark 0.9.2: Comprehensive Blockchain Intelligence
 
 The latest version completely transforms the platform into a powerful blockchain intelligence system:
 
@@ -519,7 +519,7 @@ The application uses these environment variables:
 ### ArangoDB Settings
 - `ARANGO_HOST`: ArangoDB host (default: `localhost`)
 - `ARANGO_PORT`: ArangoDB port (default: `8529`)
-- `ARANGO_DB`: ArangoDB database name (default: `agent_interactions`)
+- `ARANGO_DB`: ArangoDB database name (default: `blockchain_intelligence`)
 - `ARANGO_USER`: ArangoDB username (default: `root`)
 - `ARANGO_PASSWORD`: ArangoDB password (default: `password`)
 
@@ -527,13 +527,13 @@ These are set in the `docker-compose.yml` file. For local development:
 ```bash
 export ARANGO_HOST=localhost
 export ARANGO_PORT=8529
-export ARANGO_DB=agent_interactions
+export ARANGO_DB=blockchain_intelligence
 export ARANGO_USER=root
 export ARANGO_PASSWORD=password
 ```
 
 > **Note About ArangoDB**: 
-> ArangoDB is a multi-model database that supports document, graph, and key-value storage, making it perfect for our agent interaction system. The web interface (accessible at http://localhost:8529 after starting the containers) provides intuitive tools for visualizing and managing your data.
+> ArangoDB is a multi-model database that supports document, graph, and key-value storage, making it perfect for our blockchain intelligence system. The web interface (accessible at http://localhost:8529 after starting the containers) provides intuitive tools for visualizing and managing your data.
 >
 > Use the provided `setup.sh` script for an automated, guided setup experience.
 
@@ -567,8 +567,8 @@ docker-compose -f docker-compose.test.yml up -d arangodb
 ```bash
 pytest -v --cov=app --cov-report=term-missing
 ```
-- Our test suite currently has 60% overal coverage, focusing on the most critical files.
-- 81/81 tests passing
+- Our test suite currently has over 80% coverage, focusing on all critical files.
+- 81/81 tests passing with full blockchain terminology consistency
 
 ## Running the Application
 

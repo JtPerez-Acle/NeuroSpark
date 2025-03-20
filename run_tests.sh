@@ -7,7 +7,7 @@ echo "==== Starting ArangoDB Testing Environment ===="
 # Function to clean up containers
 cleanup() {
   echo "==== Cleaning Up Containers ===="
-  docker-compose -f docker-compose.test.yml down -v
+  docker compose -f docker-compose.test.yml down -v
 }
 
 # Set up trap to ensure cleanup on exit
@@ -23,6 +23,6 @@ cleanup
 # 3. Runs the tests only after the setup service confirms ArangoDB is ready
 # 4. Ensures proper communication between containers using a shared network
 echo "==== Building and Running Tests ===="
-docker-compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test
+docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test
 
 echo "==== Tests Completed ===="

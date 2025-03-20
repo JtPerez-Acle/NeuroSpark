@@ -16,72 +16,73 @@ from app.analysis.network_analysis import NetworkAnalyzer
 # Initialize test client
 client = TestClient(app)
 
-# Test data
+# Test data - blockchain entities
 test_nodes = [
-    {"id": "agent1", "type": "sensor", "role": "temperature"},
-    {"id": "agent2", "type": "analyzer", "role": "pattern"},
-    {"id": "agent3", "type": "coordinator", "role": "system"},
-    {"id": "agent4", "type": "actuator", "role": "valve"},
-    {"id": "agent5", "type": "sensor", "role": "humidity"}
+    {"id": "wallet1", "address": "0x1111111111111111111111111111111111111111", "type": "EOA", "role": "trader"},
+    {"id": "wallet2", "address": "0x2222222222222222222222222222222222222222", "type": "EOA", "role": "liquidity_provider"},
+    {"id": "contract1", "address": "0x3333333333333333333333333333333333333333", "type": "contract", "role": "token"},
+    {"id": "contract2", "address": "0x4444444444444444444444444444444444444444", "type": "contract", "role": "dex"},
+    {"id": "wallet3", "address": "0x5555555555555555555555555555555555555555", "type": "EOA", "role": "whale"}
 ]
 
 test_links = [
-    {"source": "agent1", "target": "agent2", "interaction_type": "report", "timestamp": "2025-02-15T12:00:00Z"},
-    {"source": "agent2", "target": "agent3", "interaction_type": "alert", "timestamp": "2025-02-15T12:05:00Z"},
-    {"source": "agent3", "target": "agent4", "interaction_type": "command", "timestamp": "2025-02-15T12:10:00Z"},
-    {"source": "agent4", "target": "agent3", "interaction_type": "response", "timestamp": "2025-02-15T12:15:00Z"},
-    {"source": "agent5", "target": "agent2", "interaction_type": "report", "timestamp": "2025-02-15T12:20:00Z"},
-    {"source": "agent2", "target": "agent1", "interaction_type": "query", "timestamp": "2025-02-15T12:25:00Z"}
+    {"source": "wallet1", "target": "contract1", "transaction_type": "transfer", "timestamp": "2025-02-15T12:00:00Z", "value": "1000000000000000000"},
+    {"source": "wallet2", "target": "contract2", "transaction_type": "swap", "timestamp": "2025-02-15T12:05:00Z", "value": "2000000000000000000"},
+    {"source": "contract1", "target": "wallet3", "transaction_type": "mint", "timestamp": "2025-02-15T12:10:00Z", "value": "10000000000000000000"},
+    {"source": "wallet3", "target": "contract2", "transaction_type": "deposit", "timestamp": "2025-02-15T12:15:00Z", "value": "5000000000000000000"},
+    {"source": "contract2", "target": "wallet2", "transaction_type": "withdraw", "timestamp": "2025-02-15T12:20:00Z", "value": "1500000000000000000"},
+    {"source": "wallet1", "target": "wallet3", "transaction_type": "transfer", "timestamp": "2025-02-15T12:25:00Z", "value": "500000000000000000"}
 ]
 
 # Mock database response
-async def mock_get_agents():
-    # Return a format compatible with get_agents response
-    agents = []
+async def mock_get_wallets():
+    """Mock wallet data for tests."""
+    wallets = []
     for node in test_nodes:
-        agent = node.copy()  # Make a copy to avoid modifying the original
-        # Ensure the id field is present
-        if "id" not in agent:
-            # Use the id from test data
-            agent_id = agent["role"] + "_" + agent["type"]
-            if agent_id in ["temperature_sensor", "humidity_sensor", "pattern_analyzer", 
-                          "system_coordinator", "valve_actuator"]:
-                # Map to the expected agent IDs used in the test links
-                mapping = {
-                    "temperature_sensor": "agent1", 
-                    "pattern_analyzer": "agent2",
-                    "system_coordinator": "agent3", 
-                    "valve_actuator": "agent4",
-                    "humidity_sensor": "agent5"
-                }
-                agent["id"] = mapping.get(agent_id, agent_id)
-            else:
-                agent["id"] = agent_id
-        agents.append(agent)
-    return agents
+        if node["type"] == "EOA":
+            wallet = node.copy()  # Make a copy to avoid modifying the original
+            if "address" not in wallet:
+                wallet["address"] = f"0x{wallet['id']}"
+            wallets.append(wallet)
+    return wallets
 
-async def mock_get_interactions(limit=1000):
-    # Return a format compatible with get_interactions response
-    interactions = []
+async def mock_get_contracts():
+    """Mock contract data for tests."""
+    contracts = []
+    for node in test_nodes:
+        if node["type"] == "contract":
+            contract = node.copy()  # Make a copy to avoid modifying the original
+            if "address" not in contract:
+                contract["address"] = f"0x{contract['id']}"
+            contracts.append(contract)
+    return contracts
+
+async def mock_get_transactions(limit=1000):
+    """Mock transaction data for tests."""
+    transactions = []
     for link in test_links:
-        interaction = link.copy()  # Make a copy to avoid modifying the original
-        # Rename source/target to sender_id/receiver_id if needed
-        if "source" in interaction and "sender_id" not in interaction:
-            interaction["sender_id"] = interaction.pop("source")
-        if "target" in interaction and "receiver_id" not in interaction:
-            interaction["receiver_id"] = interaction.pop("target")
-        # Add an ID if not present
-        if "id" not in interaction:
-            interaction["id"] = f"interaction_{len(interactions)}"
-        interactions.append(interaction)
-    return interactions
+        transaction = link.copy()  # Make a copy to avoid modifying the original
+        # Rename source/target to from_address/to_address if needed
+        if "source" in transaction and "from_address" not in transaction:
+            transaction["from_address"] = transaction.pop("source")
+        if "target" in transaction and "to_address" not in transaction:
+            transaction["to_address"] = transaction.pop("target")
+        # Convert transaction_type to proper type field
+        if "transaction_type" in transaction:
+            transaction["type"] = transaction["transaction_type"]
+        # Add a hash if not present
+        if "hash" not in transaction:
+            transaction["hash"] = f"0x{len(transactions):064x}"
+        transactions.append(transaction)
+    return transactions
 
 @pytest.fixture
 def mock_db():
-    """Create a mock database."""
+    """Create a mock database for blockchain data."""
     db = MagicMock()
-    db.get_agents = mock_get_agents
-    db.get_interactions = mock_get_interactions
+    db.get_wallets = mock_get_wallets
+    db.get_contracts = mock_get_contracts
+    db.get_transactions = mock_get_transactions
     return db
 
 @pytest.fixture
@@ -147,7 +148,7 @@ def test_get_centrality_metrics():
     assert "out_degree" in centrality
     
     # Check that all nodes have centrality scores
-    for node_id in ["agent1", "agent2", "agent3", "agent4", "agent5"]:
+    for node_id in ["wallet1", "wallet2", "wallet3", "contract1", "contract2"]:
         assert node_id in centrality["in_degree"]
         assert node_id in centrality["out_degree"]
 
@@ -168,7 +169,7 @@ def test_detect_communities():
     all_nodes = set()
     for community in communities["communities"]:
         all_nodes.update(community)
-    assert all_nodes == {"agent1", "agent2", "agent3", "agent4", "agent5"}
+    assert all_nodes == {"wallet1", "wallet2", "wallet3", "contract1", "contract2"}
 
 def test_get_layout_positions():
     """Test the get_layout_positions method."""
@@ -180,7 +181,7 @@ def test_get_layout_positions():
     positions = analyzer.get_layout_positions()
     
     # Check that all nodes have positions
-    for node_id in ["agent1", "agent2", "agent3", "agent4", "agent5"]:
+    for node_id in ["wallet1", "wallet2", "wallet3", "contract1", "contract2"]:
         assert node_id in positions
         assert len(positions[node_id]) == 2  # Default is 2D
 

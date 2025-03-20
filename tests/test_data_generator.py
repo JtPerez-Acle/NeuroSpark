@@ -64,53 +64,54 @@ class TestBlockchainDataGenerator:
         num_transactions = 10
         data = self.generator.generate_blockchain_data(num_wallets, num_transactions)
         
-        assert "agents" in data
-        assert "interactions" in data
+        # Check for the new blockchain field names
+        assert "wallets" in data  # Contains wallet/contract entities
+        assert "transactions" in data  # Contains blockchain transactions
         assert "run_id" in data
         assert "scenario" in data
         assert "blockchain" in data
         assert "start_block" in data
         assert "end_block" in data
         assert data["blockchain"] == "ethereum"
-        assert len(data["agents"]) == num_wallets
-        assert len(data["interactions"]) == num_transactions
+        assert len(data["wallets"]) == num_wallets
+        assert len(data["transactions"]) == num_transactions
         
-        # Verify wallet structure
-        for agent in data["agents"]:
-            assert "id" in agent
-            assert "address" in agent
-            assert "type" in agent
-            assert "role" in agent
-            assert "chain" in agent
-            assert "tags" in agent
-            assert "created_at" in agent
+        # Verify blockchain entity structure (wallets and contracts)
+        for entity in data["wallets"]:
+            assert "id" in entity
+            assert "address" in entity
+            assert "type" in entity  # "EOA" or "contract"
+            assert "role" in entity
+            assert "chain" in entity
+            assert "tags" in entity
+            assert "created_at" in entity
         
-        # Verify transaction structure
-        for interaction in data["interactions"]:
-            assert "interaction_id" in interaction
-            assert "sender_id" in interaction
-            assert "receiver_id" in interaction
-            assert "topic" in interaction
-            assert "message" in interaction
-            assert "interaction_type" in interaction
-            assert "timestamp" in interaction
-            assert "metadata" in interaction
-            assert "transaction" in interaction["metadata"]
-            assert "blockchain" in interaction["metadata"]
-            assert interaction["metadata"]["blockchain"] == "ethereum"
+        # Verify blockchain transaction structure
+        for tx in data["transactions"]:
+            assert "interaction_id" in tx  # This is the transaction hash
+            assert "sender_id" in tx  # From address
+            assert "receiver_id" in tx  # To address
+            assert "topic" in tx  # Transaction category
+            assert "message" in tx  # Human-readable description
+            assert "interaction_type" in tx  # Transaction type (transfer, swap, etc.)
+            assert "timestamp" in tx
+            assert "metadata" in tx
+            assert "transaction" in tx["metadata"]  # Raw transaction data
+            assert "blockchain" in tx["metadata"]
+            assert tx["metadata"]["blockchain"] == "ethereum"
             
             # Check transaction fields
-            tx = interaction["metadata"]["transaction"]
-            assert "hash" in tx
-            assert "block_number" in tx
-            assert "timestamp" in tx
-            assert "from_address" in tx
-            assert "to_address" in tx
-            assert "gas_price" in tx
-            assert "gas_used" in tx
-            assert "status" in tx
-            assert "chain" in tx
-            assert tx["chain"] == "ethereum"
+            tx_data = tx["metadata"]["transaction"]
+            assert "hash" in tx_data
+            assert "block_number" in tx_data
+            assert "timestamp" in tx_data
+            assert "from_address" in tx_data
+            assert "to_address" in tx_data
+            assert "gas_price" in tx_data
+            assert "gas_used" in tx_data
+            assert "status" in tx_data
+            assert "chain" in tx_data
+            assert tx_data["chain"] == "ethereum"
 
     def test_scenario_generator_init(self):
         """Test initializing generator with a scenario."""
@@ -143,14 +144,14 @@ class TestBlockchainDataGenerator:
         
         assert data["scenario"] == "dex"
         
-        # Verify agents include DEX contracts
-        dex_contracts = [a for a in data["agents"] if a["type"] == "contract" and a["role"] == "dex"]
+        # Verify blockchain entities include DEX contracts
+        dex_contracts = [entity for entity in data["wallets"] if entity["type"] == "contract" and entity["role"] == "dex"]
         assert len(dex_contracts) > 0
         
-        # Verify we have interactions related to DEX
-        dex_interactions = [i for i in data["interactions"] 
-                           if i["interaction_type"] in ["swap", "add_liquidity", "remove_liquidity"]]
-        assert len(dex_interactions) > 0
+        # Verify we have DEX-related transactions
+        dex_transactions = [tx for tx in data["transactions"] 
+                           if tx["interaction_type"] in ["swap", "add_liquidity", "remove_liquidity"]]
+        assert len(dex_transactions) > 0
 
     def test_blockchain_lending_scenario(self):
         """Test lending scenario generation."""
@@ -159,14 +160,14 @@ class TestBlockchainDataGenerator:
         
         assert data["scenario"] == "lending"
         
-        # Verify agents include lending contracts
-        lending_contracts = [a for a in data["agents"] if a["type"] == "contract" and a["role"] == "lending"]
+        # Verify blockchain entities include lending contracts
+        lending_contracts = [entity for entity in data["wallets"] if entity["type"] == "contract" and entity["role"] == "lending"]
         assert len(lending_contracts) > 0
         
-        # Verify we have interactions related to lending
-        lending_interactions = [i for i in data["interactions"] 
-                               if i["interaction_type"] in ["deposit", "withdraw", "borrow", "repay"]]
-        assert len(lending_interactions) > 0
+        # Verify we have lending-related transactions
+        lending_transactions = [tx for tx in data["transactions"] 
+                               if tx["interaction_type"] in ["deposit", "withdraw", "borrow", "repay"]]
+        assert len(lending_transactions) > 0
 
     def test_generate_transaction(self):
         """Test generating a transaction between wallets."""

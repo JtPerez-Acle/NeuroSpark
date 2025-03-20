@@ -37,7 +37,7 @@ async def test_websocket_connection_subscription():
     )
     
     # Subscribe to events
-    events = {"agent_update", "graph_update"}
+    events = {"transaction", "contract_event", "block_update"}
     for event in events:
         connection.subscribe(event)
     
@@ -96,60 +96,70 @@ async def test_broadcast_event():
         websocket=mock_websocket,
         connection_type=ConnectionType.FRONTEND
     )
-    manager.connection_manager.active_connections[client_id].subscribe("agent_update")
+    manager.connection_manager.active_connections[client_id].subscribe("transaction")
     
     # Mock event data
     event_data = {
-        "type": "agent_update",
-        "data": {"agent_id": "agent1", "status": "active"}
+        "type": "transaction",
+        "data": {
+            "hash": "0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890",
+            "from": "0x1234567890123456789012345678901234567890",
+            "to": "0x0987654321098765432109876543210987654321",
+            "value": "1000000000000000000"
+        }
     }
     
     # Test broadcasting
     recipients = await manager.broadcast_event(
-        event_type="agent_update",
+        event_type="transaction",
         data=event_data
     )
     assert len(recipients) == 1
     assert client_id in recipients
     mock_websocket.send_json.assert_awaited_once_with({
-        "type": "agent_update",
+        "type": "transaction",
         "data": event_data
     })
 
-# Test Agent-Specific Events
-async def test_agent_specific_broadcast():
-    """Test broadcasting events to specific agents."""
+# Test Blockchain Address-Specific Events
+async def test_address_specific_broadcast():
+    """Test broadcasting events to specific blockchain addresses."""
     manager = WebSocketManager()
-    agent_id = "agent1"
+    address = "0x1234567890123456789012345678901234567890"
     mock_websocket = AsyncMock()
     mock_websocket.accept = AsyncMock()
     mock_websocket.send_json = AsyncMock()
     
-    # Connect and subscribe agent
+    # Connect and subscribe blockchain address
     await manager.connect(
-        client_id=agent_id,
+        client_id=address,
         websocket=mock_websocket,
-        connection_type=ConnectionType.AGENT
+        connection_type=ConnectionType.BLOCKCHAIN
     )
-    manager.connection_manager.active_connections[agent_id].subscribe("command")
+    manager.connection_manager.active_connections[address].subscribe("transaction")
     
-    # Mock command data
-    command_data = {
-        "type": "command",
-        "data": {"action": "measure_temperature"}
+    # Mock transaction data
+    transaction_data = {
+        "type": "transaction",
+        "data": {
+            "hash": "0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890",
+            "from": "0x0987654321098765432109876543210987654321",
+            "to": address,
+            "value": "1000000000000000000"  # 1 ETH in wei
+        }
     }
     
-    # Test broadcasting to specific agent
-    recipients = await manager.broadcast_to_agent(
-        agent_id=agent_id,
-        event_type="command",
-        data=command_data
+    # Test broadcasting to specific blockchain address
+    recipients = await manager.broadcast_to_address(
+        address=address,
+        event_type="transaction",
+        data=transaction_data
     )
     assert len(recipients) == 1
-    assert agent_id in recipients
+    assert address in recipients
     mock_websocket.send_json.assert_awaited_once_with({
-        "type": "command",
-        "data": command_data
+        "type": "transaction",
+        "data": transaction_data
     })
 
 # Test Connection State Management

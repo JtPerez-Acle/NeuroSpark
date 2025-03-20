@@ -20,8 +20,9 @@ if ! command -v docker &> /dev/null; then
     exit 1
 fi
 
-if ! command -v docker-compose &> /dev/null; then
-    echo -e "${RED}Docker Compose is not installed. Please install Docker Compose first.${NC}"
+# Check for docker compose command
+if ! docker compose version &> /dev/null; then
+    echo -e "${RED}Docker Compose is not installed or not in PATH. Please install Docker Compose first.${NC}"
     exit 1
 fi
 
@@ -48,15 +49,15 @@ echo -e "\n${BOLD}Starting Services${NC}"
 
 # If there are existing volumes, clean them up
 echo "Cleaning up any existing volumes..."
-docker-compose down -v &> /dev/null || true
+docker compose down -v &> /dev/null || true
 
 # Create directories for ArangoDB data
 mkdir -p ./arangodb/data
 mkdir -p ./arangodb/apps
 
 # Start the services
-echo "Starting services with docker-compose..."
-docker-compose up -d
+echo "Starting services with docker compose..."
+docker compose up -d
 
 # Wait for services to initialize
 echo "Waiting for services to initialize..."
@@ -85,7 +86,7 @@ if [ "$connected" = true ]; then
     echo -e "${GREEN}Successfully connected to ArangoDB!${NC}"
 else
     echo -e "${RED}Failed to connect to ArangoDB after $max_attempts attempts.${NC}"
-    echo "Please check the logs with 'docker-compose logs arangodb'"
+    echo "Please check the logs with 'docker compose logs arangodb'"
 fi
 
 # Setup complete
@@ -97,9 +98,9 @@ echo -e "ArangoDB UI available at: ${BOLD}http://localhost:8529${NC} (user: root
 echo -e "Grafana Dashboard available at: ${BOLD}http://localhost:3000${NC} (user: admin, password: admin)"
 
 echo -e "\n${BOLD}Useful Commands:${NC}"
-echo "  docker-compose ps                   - View running services"
-echo "  docker-compose logs -f app          - Follow app logs"
-echo "  docker-compose logs -f arangodb     - Follow database logs"
-echo "  docker-compose restart app          - Restart the API"
-echo "  docker-compose down                 - Stop services"
-echo "  docker-compose down -v              - Stop services and remove volumes"
+echo "  docker compose ps                   - View running services"
+echo "  docker compose logs -f app          - Follow app logs"
+echo "  docker compose logs -f arangodb     - Follow database logs"
+echo "  docker compose restart app          - Restart the API"
+echo "  docker compose down                 - Stop services"
+echo "  docker compose down -v              - Stop services and remove volumes"

@@ -10,7 +10,7 @@ class Settings(BaseSettings):
     # ArangoDB settings
     ARANGO_HOST: str = os.getenv("ARANGO_HOST", "localhost")
     ARANGO_PORT: int = int(os.getenv("ARANGO_PORT", "8529"))
-    ARANGO_DB: str = os.getenv("ARANGO_DB", "agent_interactions")
+    ARANGO_DB: str = os.getenv("ARANGO_DB", "blockchain_intelligence")
     ARANGO_USER: str = os.getenv("ARANGO_USER", "root")
     ARANGO_PASSWORD: str = os.getenv("ARANGO_PASSWORD", "password")
 
